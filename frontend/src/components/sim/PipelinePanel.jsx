@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useSimStore } from "@/store/simStore";
 import { intensity, flow, STAGES } from "@/sim/pipelineState";
-import { Workflow, X, Eye, Compass, Hand, Brain, Cog, Wind, User } from "lucide-react";
+import { useDraggable } from "@/hooks/useDraggable";
+import { Workflow, X, Eye, Compass, Hand, Brain, Cog, Wind, User, Move } from "lucide-react";
 
 /**
  * PipelinePanel — Live visualization of Aira's perception → cognition →
@@ -56,6 +57,9 @@ export default function PipelinePanel() {
   const open = useSimStore((s) => s.pipelinePanelOpen);
   const toggle = useSimStore((s) => s.togglePipelinePanel);
 
+  const btnDrag = useDraggable("pipeline-btn");
+  const panelDrag = useDraggable("pipeline-panel");
+
   // Local 30 fps "tick" so we re-read module-level intensities each frame.
   const [tick, setTick] = useState(0);
   const rafRef = useRef(0);
@@ -77,8 +81,10 @@ export default function PipelinePanel() {
     return (
       <button
         data-testid="open-pipeline-panel-btn"
-        onClick={toggle}
-        className="pointer-events-auto fixed top-24 right-5 z-30 flex items-center gap-2 glass rounded-full px-4 py-2.5 text-[10px] uppercase tracking-[0.22em] font-bold text-[#A78BFA] border-[#A78BFA]/40 hover:bg-white/5"
+        onClick={btnDrag.guardClick(toggle)}
+        {...btnDrag.handleProps}
+        style={{ ...btnDrag.handleProps.style, ...btnDrag.style }}
+        className="pointer-events-auto fixed top-24 right-5 z-30 flex items-center gap-2 glass rounded-full px-4 py-2.5 text-[10px] uppercase tracking-[0.22em] font-bold text-[#A78BFA] border-[#A78BFA]/40 hover:bg-white/5 select-none"
       >
         <Workflow className="w-3.5 h-3.5" />
         Pipeline
@@ -96,15 +102,20 @@ export default function PipelinePanel() {
   return (
     <aside
       data-testid="pipeline-panel"
+      style={panelDrag.style}
       className="pointer-events-auto fixed top-24 right-5 z-30 w-[640px] glass rounded-xl p-4 flex flex-col gap-3"
     >
-      <header className="flex items-center justify-between border-b border-white/10 pb-2">
+      <header
+        {...panelDrag.handleProps}
+        className="flex items-center justify-between border-b border-white/10 pb-2 select-none"
+      >
         <div className="flex items-center gap-2">
+          <Move className="w-3 h-3 text-zinc-500" />
           <Workflow className="w-4 h-4 text-[#A78BFA]" />
           <span className="heading text-base font-black tracking-tight">PIPELINE</span>
           <span className="text-[9px] font-mono uppercase tracking-[0.22em] text-zinc-500">perception → action</span>
         </div>
-        <button onClick={toggle} data-testid="close-pipeline-panel-btn" className="text-zinc-400 hover:text-white">
+        <button onClick={toggle} data-testid="close-pipeline-panel-btn" className="text-zinc-400 hover:text-white" onPointerDown={(e) => e.stopPropagation()}>
           <X className="w-4 h-4" />
         </button>
       </header>

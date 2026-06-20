@@ -1,7 +1,8 @@
 import { useSimStore } from "@/store/simStore";
 import { Slider } from "@/components/ui/slider";
 import { JOINT_LIMITS } from "@/sim/anatomy";
-import { X, RotateCcw, Hand } from "lucide-react";
+import { X, RotateCcw, Hand, Move } from "lucide-react";
+import { useDraggable } from "@/hooks/useDraggable";
 
 /**
  * JointPanel — left-floating panel of sliders to manually pose Aira.
@@ -23,12 +24,17 @@ export default function JointPanel() {
   const setJoint = useSimStore((s) => s.setJoint);
   const resetJoints = useSimStore((s) => s.resetJoints);
 
+  const btnDrag = useDraggable("jointPanel-btn");
+  const panelDrag = useDraggable("jointPanel-panel");
+
   if (!open) {
     return (
       <button
         data-testid="open-joint-panel-btn"
-        onClick={toggle}
-        className="pointer-events-auto fixed bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 glass rounded-full px-4 py-2.5 text-[10px] uppercase tracking-[0.22em] font-bold text-white hover:bg-white/5"
+        onClick={btnDrag.guardClick(toggle)}
+        {...btnDrag.handleProps}
+        style={{ ...btnDrag.handleProps.style, ...btnDrag.style }}
+        className="pointer-events-auto fixed bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 glass rounded-full px-4 py-2.5 text-[10px] uppercase tracking-[0.22em] font-bold text-white hover:bg-white/5 select-none"
       >
         <Hand className="w-3.5 h-3.5" /> Manual Posing
       </button>
@@ -38,14 +44,19 @@ export default function JointPanel() {
   return (
     <aside
       data-testid="joint-panel"
+      style={panelDrag.style}
       className="pointer-events-auto fixed bottom-5 left-1/2 -translate-x-1/2 z-30 w-[420px] max-h-[60vh] glass rounded-xl p-4 flex flex-col gap-3 overflow-y-auto scroll-thin"
     >
-      <header className="flex items-center justify-between border-b border-white/10 pb-2">
+      <header
+        {...panelDrag.handleProps}
+        className="flex items-center justify-between border-b border-white/10 pb-2 select-none"
+      >
         <div className="flex items-center gap-2">
+          <Move className="w-3 h-3 text-zinc-500" />
           <Hand className="w-3.5 h-3.5 text-white" />
           <span className="heading text-sm font-black tracking-tight">MANUAL POSING</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" onPointerDown={(e) => e.stopPropagation()}>
           <button
             data-testid="reset-joints-btn"
             onClick={resetJoints}

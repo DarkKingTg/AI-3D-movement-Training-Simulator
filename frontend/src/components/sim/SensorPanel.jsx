@@ -1,6 +1,7 @@
 import { useSimStore } from "@/store/simStore";
 import VisionThumbnail from "@/components/sim/VisionThumbnail";
-import { Eye, Hand, Activity, Compass, Crosshair, Database, X } from "lucide-react";
+import { Eye, Hand, Activity, Compass, Crosshair, Database, X, Move } from "lucide-react";
+import { useDraggable } from "@/hooks/useDraggable";
 
 /**
  * SensorPanel — bottom-right floating panel showing all live sensory input
@@ -21,6 +22,9 @@ export default function SensorPanel() {
   const jointsActual = useSimStore((s) => s.jointsActual);
   const stats = useSimStore((s) => s.stats);
 
+  const btnDrag = useDraggable("sensorPanel-btn");
+  const panelDrag = useDraggable("sensorPanel-panel");
+
   // Expose to window for external consumers
   if (typeof window !== "undefined") {
     window.airaAiInput = { senses, jointsActual, stats };
@@ -30,8 +34,10 @@ export default function SensorPanel() {
     return (
       <button
         data-testid="open-sensor-panel-btn"
-        onClick={toggle}
-        className="pointer-events-auto fixed bottom-5 right-5 z-30 flex items-center gap-2 glass rounded-full px-4 py-2.5 text-[10px] uppercase tracking-[0.22em] font-bold text-[#00ff88] border-[#00ff88]/40 hover:bg-white/5"
+        onClick={btnDrag.guardClick(toggle)}
+        {...btnDrag.handleProps}
+        style={{ ...btnDrag.handleProps.style, ...btnDrag.style }}
+        className="pointer-events-auto fixed bottom-5 right-5 z-30 flex items-center gap-2 glass rounded-full px-4 py-2.5 text-[10px] uppercase tracking-[0.22em] font-bold text-[#00ff88] border-[#00ff88]/40 hover:bg-white/5 select-none"
       >
         <Database className="w-3.5 h-3.5" /> AI Input Feed
       </button>
@@ -57,10 +63,15 @@ export default function SensorPanel() {
   return (
     <aside
       data-testid="sensor-panel"
+      style={panelDrag.style}
       className="pointer-events-auto fixed bottom-5 right-5 z-30 w-[420px] max-h-[calc(100vh-120px)] glass rounded-xl p-4 flex flex-col gap-3 overflow-y-auto scroll-thin"
     >
-      <header className="flex items-center justify-between border-b border-white/10 pb-2">
+      <header
+        {...panelDrag.handleProps}
+        className="flex items-center justify-between border-b border-white/10 pb-2 select-none"
+      >
         <div className="flex items-center gap-2">
+          <Move className="w-3 h-3 text-zinc-500" />
           <Database className="w-3.5 h-3.5 text-[#00ff88]" />
           <span className="heading text-sm font-black tracking-tight">AI INPUT FEED</span>
           <span className="text-[9px] font-mono uppercase tracking-[0.22em] text-zinc-500">live · {Math.round(stats.attempts)} ep</span>
@@ -68,6 +79,7 @@ export default function SensorPanel() {
         <button
           data-testid="close-sensor-panel-btn"
           onClick={toggle}
+          onPointerDown={(e) => e.stopPropagation()}
           className="text-zinc-400 hover:text-white"
         >
           <X className="w-4 h-4" />

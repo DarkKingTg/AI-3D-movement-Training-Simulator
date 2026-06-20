@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useSimStore } from "@/store/simStore";
-import { Brain, X, Eraser, Eye, Ear, Hand, Footprints, Zap, GraduationCap } from "lucide-react";
+import { useDraggable } from "@/hooks/useDraggable";
+import { Brain, X, Eraser, Eye, Ear, Hand, Footprints, Zap, GraduationCap, Move } from "lucide-react";
 
 /**
  * AIThinkingPanel — live ringbuffer of Aira's "internal monologue".
@@ -32,6 +33,11 @@ export default function AIThinkingPanel() {
   const clear = useSimStore((s) => s.clearThoughts);
   const listRef = useRef(null);
 
+  // Drag state — buttons & panels share the same translate so the panel
+  // opens where the button was, and the button returns where the panel was.
+  const btnDrag = useDraggable("aiThinking-btn");
+  const panelDrag = useDraggable("aiThinking-panel");
+
   // Auto-scroll to top (new thought)
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = 0;
@@ -41,8 +47,10 @@ export default function AIThinkingPanel() {
     return (
       <button
         data-testid="open-ai-thinking-panel-btn"
-        onClick={toggle}
-        className="pointer-events-auto fixed bottom-5 left-5 z-30 flex items-center gap-2 glass rounded-full px-4 py-2.5 text-[10px] uppercase tracking-[0.22em] font-bold text-[#FFEA00] border-[#FFEA00]/40 hover:bg-white/5"
+        onClick={btnDrag.guardClick(toggle)}
+        {...btnDrag.handleProps}
+        style={{ ...btnDrag.handleProps.style, ...btnDrag.style }}
+        className="pointer-events-auto fixed bottom-5 left-5 z-30 flex items-center gap-2 glass rounded-full px-4 py-2.5 text-[10px] uppercase tracking-[0.22em] font-bold text-[#FFEA00] border-[#FFEA00]/40 hover:bg-white/5 select-none"
       >
         <Brain className="w-3.5 h-3.5" />
         AI Thinking
@@ -58,15 +66,20 @@ export default function AIThinkingPanel() {
   return (
     <aside
       data-testid="ai-thinking-panel"
+      style={panelDrag.style}
       className="pointer-events-auto fixed bottom-5 left-5 z-30 w-[360px] max-h-[42vh] glass rounded-xl p-4 flex flex-col gap-3"
     >
-      <header className="flex items-center justify-between border-b border-white/10 pb-2">
+      <header
+        {...panelDrag.handleProps}
+        className="flex items-center justify-between border-b border-white/10 pb-2 select-none"
+      >
         <div className="flex items-center gap-2">
+          <Move className="w-3 h-3 text-zinc-500" />
           <Brain className="w-4 h-4 text-[#FFEA00]" />
           <span className="heading text-base font-black tracking-tight">AI THINKING</span>
           <span className="text-[9px] font-mono uppercase tracking-[0.22em] text-zinc-500">stream</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1" onPointerDown={(e) => e.stopPropagation()}>
           <button
             data-testid="clear-ai-thoughts-btn"
             onClick={clear}
