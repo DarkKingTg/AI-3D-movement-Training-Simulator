@@ -1,76 +1,98 @@
 # Aira Motion Lab — PRD
 
 ## Original Problem Statement
-Build a simulation application for **Aira** (a female child humanoid) to learn human movements — walking, running, jumping, etc. — inside an interactive 3D scene with an optimised physics engine. The user should be able to assign goals (follow the light, follow object, lift object, jump over obstacle, walk to target), spawn 3D obstacles/objects, and watch Aira interact with the world.
+Build a simulation application for **Aira** — a female child humanoid — to learn human movements (walking, running, jumping, etc.) inside an interactive 3D scene with an optimised physics engine. The user can assign goals, spawn obstacles, watch her interact, **teach her motor patterns**, and **read every sensor signal that an AI controller would consume**.
 
 ## User Choices (explicit)
 - Engine: **React Three Fiber + Rapier**
 - Movement: **Procedural / physics-driven**
 - Goals (v1): Follow Light, Follow Object, Lift Object, Jump Over Obstacle, Walk to Target
 - Character: Female-child humanoid
-- Persistence: **localStorage** (no backend persistence required)
+- Persistence: **localStorage**
 
 ## Architecture
 - **Frontend**: React 19 + CRA/Craco + Tailwind + Shadcn UI
-- **3D**: `@react-three/fiber` v9, `@react-three/drei` v10, `@react-three/rapier` v1 (Rapier physics)
-- **State**: `zustand` store with localStorage hydration
-- **Backend**: FastAPI (unchanged template, no domain endpoints required for v1)
+- **3D**: `@react-three/fiber` v9, `@react-three/drei` v10, `@react-three/rapier` v1
+- **State**: `zustand` store + localStorage hydration
+- **Backend**: FastAPI (template only)
 
-## Implemented Features (v1)
-- 3D viewport with R3F + Rapier physics (Ground + dynamic Aira + spawned objects)
-- Procedural female-child humanoid (Aira) — single capsule physics body with cosmetic limbs (head, hair, twin braids, bow, arms, legs, shoes) procedurally animated each frame based on velocity (walking cycle, arm swing, head nod)
-- AiController applies forces/impulses to drive Aira toward goal target
-- 6 goals: Idle, Walk to Target, Follow the Light, Follow Object, Lift Object, Jump Over Obstacle
-- Object spawner: Box (obstacle), Ramp, Ball, Target flag, Light, Lift-Crate (with HTML labels in scene)
-- 3 camera modes: Orbit, Follow (camera tracks Aira), Top-down
-- Telemetry: Pos, Velocity, Distance, State, Goal
-- Counters: Attempts, Successes, Falls
-- Motor parameter sliders: Speed, Balance, Jump Power
-- Pause / Reset Aira / Save / Wipe local progress
-- Goal-aware behaviour:
-  - Walk-to-Target: walks toward target flag, decelerates near it, success when within 0.7m
-  - Jump: triggers jump impulse when close to box/ramp
-  - Lift: dispatches lift event that the LiftBox listens to and bumps upward
-  - Follow Light: chases nearest light (or a virtual orbital light if none spawned)
-  - Follow Object: chases ball or lift-crate
+## Implemented Features (v1.3)
+### Core simulation
+- 3D viewport with R3F + Rapier physics; orbit/follow/top camera modes
+- Procedural female-child humanoid (Aira) — single capsule physics body with articulated cosmetic skeleton
+- AiController: velocity-based locomotion driving Aira toward goal target
+- 6 goals: Idle / Walk to Target / Follow Light / Follow Object / Lift Object / Jump Obstacle
+- Spawnable objects: Box · Ramp · Ball · Target · Light · Lift-Crate (with HTML labels)
+- Save/Wipe localStorage, Pause/Reset/Reset-Aira
 
-## Design System
-- Archetype: Swiss & High-Contrast (Dark)
-- Fonts: Chivo (heading), IBM Plex Sans (body), JetBrains Mono (telemetry)
-- Accent colors: Klein Blue #002FA7 (primary), Signal Red #FF0000 (falls), Lemon Yellow #FFEA00 (obstacles), Pure Green #00FF00 (success)
+### Articulation & Senses (AI Input)
+- **Articulated skeleton**: spine, head, l/r shoulders, elbows, wrists, fingers, hips, knees as nested groups
+- **Anatomical joint limits** (anatomy.js): clamped at human RoM (e.g. elbow 0–145°, neck ±70° yaw)
+- **JointDriver**: clamps + applies commanded angles every frame; writes back applied angles as proprioception
+- **VisionCamera**: renders Aira's first-person eye-view at 96×72×100° FOV into a WebGL RenderTarget, reads pixels into Uint8Array (~6 Hz)
+- **IMU**: head & pelvis Yaw/Pitch/Roll, head linear acceleration (~10 Hz)
+- **Visible-object raycast**: lists objects inside FOV with distance & angular offset
+- **ContactSensor**: collision pairs against the body collider (force estimate)
+- **`window.airaAiInput`**: live JS bridge exposing `senses`, `jointsActual`, `stats` for external AI consumption
+- **SensorPanel**: floating bottom-right panel showing live vision thumbnail, IMU, proprioception (14 joints), visible objects, contacts
+- **JointPanel** (Manual Posing): bottom-center slider panel — every joint axis with anatomical clamps
+
+### Teach Aira (motor learning)
+- **MotionLibrary** with 8 keyframe clips: Idle · Walk Cycle · Run Cycle · Standing Jump · Wave Hello · Sit Down · Reach Forward · Squat
+- **MotionPlayer**: linearly interpolates keyframes onto Aira's joints in real time
+- **TeachPanel**: top-center panel listing motions with description + duration + keyframe count; play/stop + speed slider
+- While a motion plays, the AI Input Feed live-streams the resulting joint angles and head orientation — the exact data an AI would learn from
+
+### Curriculum / Mission mode
+- **6 progressive levels** (Steady Steps → Stretching Out → First Obstacle → Slalom → Ramp & Ball → Marathon Mind)
+- Auto-spawns target + obstacles per level layout
+- **Live lap timer** + **best-time per level** + total best Σ + lap history
+- **Personal-best PR detection** (yellow pulse)
+- **Share Mission Report** — copies summary to clipboard
 
 ## File Layout
 ```
 /app/frontend/src/
-├── App.js, index.js, index.css, App.css
-├── store/simStore.js              # zustand state + localStorage
+├── App.js, index.js, index.css
+├── store/simStore.js                   # zustand state, persistence, sensor writes
 ├── constants/testIds.js
-├── pages/Simulation.jsx           # main layout
+├── pages/Simulation.jsx                # main layout
 ├── components/sim/
-│   ├── TopBar.jsx                 # pause / reset / camera modes
-│   ├── LeftSidebar.jsx            # profile, goals, spawner
-│   └── RightSidebar.jsx           # telemetry, sliders, save
+│   ├── TopBar.jsx                      # pause / reset / camera modes
+│   ├── LeftSidebar.jsx                 # profile, curriculum, goals, spawner
+│   ├── RightSidebar.jsx                # telemetry, sliders, save
+│   ├── CurriculumPanel.jsx             # mission UI
+│   ├── SensorPanel.jsx                 # AI Input Feed (vision / IMU / joints / contacts)
+│   ├── JointPanel.jsx                  # manual posing sliders
+│   ├── TeachPanel.jsx                  # motion library UI
+│   └── VisionThumbnail.jsx             # paints Aira's eye-view onto a canvas
 └── sim/
-    ├── SimulationCanvas.jsx       # R3F Canvas + Physics
-    ├── Ground.jsx
-    ├── AiraRagdoll.jsx            # humanoid body + cosmetic limbs
-    ├── AiController.jsx           # goal-driven physics controller
-    ├── SpawnedObject.jsx          # box/ramp/ball/target/light/liftBox
-    └── CameraRig.jsx              # orbit/follow/top camera
+    ├── SimulationCanvas.jsx            # R3F + Physics root
+    ├── Ground.jsx                      # ground plane
+    ├── AiraRagdoll.jsx                 # articulated humanoid
+    ├── AiController.jsx                # goal-driven locomotion
+    ├── JointDriver.jsx                 # joint clamping + proprioception
+    ├── MotionPlayer.jsx                # keyframe playback
+    ├── motionLibrary.js                # 8 motion clips
+    ├── anatomy.js                      # joint limits / defaults
+    ├── VisionCamera.jsx                # first-person render + pixel readback
+    ├── ContactSensor.jsx               # collision -> contacts
+    ├── CurriculumDirector.jsx          # mission state machine
+    ├── curriculum.js                   # 6 level layouts
+    ├── SpawnedObject.jsx               # obstacle/target/ball/light/lift-box
+    └── CameraRig.jsx                   # camera modes
 ```
 
 ## Prioritised Backlog
-### P1 (next steps)
-- Full ragdoll joints (real spherical/revolute joints for limbs) — was attempted in v1 but reverted for stability; needs careful tuning
-- Goal-progress UI (per-goal status bar, success/fail toasts)
-- Drag-to-place objects in 3D scene with raycast
-- Replay mode / record-playback of attempts
+### P1 (next)
+- **Real multi-joint Rapier ragdoll** (spherical hips/shoulders + revolute knees/elbows) for true limb physics. Current limbs are kinematically driven cosmetic bones; switching them to dynamic bodies + joint constraints will give physical impact reactions, ragdoll falls, and proper grasping.
+- Record custom motion clips (snapshot current joints → keyframe → save sequence)
 
 ### P2
-- Procedural terrain or stairs to climb
-- GLB import for a realistic Aira avatar
-- Reward-shaped curriculum (gradually harder obstacles)
-- WebRTC streaming to share simulation sessions
+- GLB import for a hyper-realistic Aira avatar
+- Procedural terrain / staircases
+- Replay mode / record-playback of attempts
+- WebRTC stream sharing live training session
 
 ## Test credentials
 None — fully client-side.
