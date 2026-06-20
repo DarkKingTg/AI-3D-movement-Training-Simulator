@@ -29,15 +29,29 @@ export default function AiController({ airaRef }) {
   const fallCoolRef = useRef(0);
   const lastGoalRef = useRef(goal);
 
-  // Reset Aira to spawn when resetSignal changes
+  // Reset Aira to spawn when resetSignal changes — handles both single-body
+  // (kinematic) and multi-body (physics) ragdolls by resetting every part.
   useEffect(() => {
     if (!airaRef.current) return;
-    const r = airaRef.current.pelvis.current;
-    if (!r) return;
-    r.setTranslation({ x: 0, y: 1.3, z: 0 }, true);
-    r.setLinvel({ x: 0, y: 0, z: 0 }, true);
-    r.setAngvel({ x: 0, y: 0, z: 0 }, true);
-    r.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true);
+    const parts = airaRef.current.allParts;
+    if (!parts) return;
+    const spawn = [0, 1.0, 0];
+    parts.forEach((ref) => {
+      const r = ref?.current;
+      if (!r) return;
+      // Preserve relative positions: read current rest offset from spawn
+      const cur = r.translation();
+      // For multi-body, we want to teleport each part by the same delta
+      // so they stay assembled. Compute delta from pelvis only on first.
+      const pelvisCur = airaRef.current.pelvis?.current?.translation();
+      const dx = pelvisCur ? spawn[0] - pelvisCur.x : 0;
+      const dy = pelvisCur ? spawn[1] - pelvisCur.y : 0;
+      const dz = pelvisCur ? spawn[2] - pelvisCur.z : 0;
+      r.setTranslation({ x: cur.x + dx, y: cur.y + dy, z: cur.z + dz }, true);
+      r.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      r.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      r.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true);
+    });
   }, [resetSignal, airaRef]);
 
   // Reset cool-downs on goal change

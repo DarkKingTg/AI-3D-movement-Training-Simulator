@@ -1,5 +1,5 @@
 import { useSimStore } from "@/store/simStore";
-import { Play, Pause, RotateCcw, Eye, Crosshair, Box as BoxIcon } from "lucide-react";
+import { Play, Pause, RotateCcw, Eye, Crosshair, Box as BoxIcon, Activity } from "lucide-react";
 import { SIM } from "@/constants/testIds";
 
 export default function TopBar() {
@@ -8,6 +8,10 @@ export default function TopBar() {
   const resetAira = useSimStore((s) => s.resetAira);
   const cameraMode = useSimStore((s) => s.cameraMode);
   const setCameraMode = useSimStore((s) => s.setCameraMode);
+  const ragdollMode = useSimStore((s) => s.ragdoll.mode);
+  const setRagdollMode = useSimStore((s) => s.setRagdollMode);
+  const pelvisLocked = useSimStore((s) => s.ragdoll.pelvisLocked);
+  const setPelvisLocked = useSimStore((s) => s.setPelvisLocked);
 
   const camBtn = (mode, label, Icon, testid) => (
     <button
@@ -39,6 +43,43 @@ export default function TopBar() {
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Ragdoll mode toggle group */}
+        <div className="flex items-center gap-1 mr-2 px-2 py-1 rounded border border-white/10 bg-black/40">
+          <Activity className="w-3 h-3 text-zinc-400" />
+          <button
+            data-testid="ragdoll-kinematic-btn"
+            onClick={() => setRagdollMode("kinematic")}
+            className={`text-[9px] uppercase tracking-[0.18em] px-2 py-1 rounded transition-colors ${
+              ragdollMode === "kinematic" ? "bg-white text-black font-bold" : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            Kinematic
+          </button>
+          <button
+            data-testid="ragdoll-physics-btn"
+            onClick={() => setRagdollMode("physics")}
+            className={`text-[9px] uppercase tracking-[0.18em] px-2 py-1 rounded transition-colors ${
+              ragdollMode === "physics" ? "bg-[#FFEA00] text-black font-bold" : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            Physics
+          </button>
+          {ragdollMode === "physics" && (
+            <button
+              data-testid="pelvis-lock-btn"
+              onClick={() => setPelvisLocked(!pelvisLocked)}
+              className={`text-[9px] uppercase tracking-[0.18em] px-2 py-1 rounded ml-1 border transition-colors ${
+                pelvisLocked
+                  ? "border-[#00ff88]/40 text-[#00ff88]"
+                  : "border-[#FF0000]/40 text-[#FF6666]"
+              }`}
+              title={pelvisLocked ? "Pelvis stable — Aira stays upright" : "Full ragdoll — Aira will collapse"}
+            >
+              {pelvisLocked ? "Upright" : "Ragdoll!"}
+            </button>
+          )}
+        </div>
+
         {camBtn("orbit", "Orbit", Eye, SIM.orbitCamBtn)}
         {camBtn("follow", "Follow", Crosshair, SIM.followCamBtn)}
         {camBtn("top", "Top", BoxIcon, SIM.topCamBtn)}

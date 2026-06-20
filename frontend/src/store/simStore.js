@@ -75,6 +75,12 @@ const initial = {
     speed: 1.0,
     time: 0,
   },
+
+  // --- Ragdoll mode toggle ---
+  ragdoll: {
+    mode: "kinematic", // "kinematic" | "physics"
+    pelvisLocked: true, // when physics: keep upright; toggle off for full collapse
+  },
 };
 
 function loadFromLocal() {
@@ -254,5 +260,15 @@ export const useSimStore = create((set, get) => {
 
     // Non-persisted bulk joints write (used by MotionPlayer at 60fps)
     setJointsRaw: (joints) => set({ joints }),
+
+    // --- Ragdoll mode ---
+    setRagdollMode: (mode) => {
+      set((s) => ({ ragdoll: { ...s.ragdoll, mode } }));
+      persist(get());
+    },
+    setPelvisLocked: (locked) => {
+      set((s) => ({ ragdoll: { ...s.ragdoll, pelvisLocked: locked } }));
+      persist(get());
+    },
   };
 });

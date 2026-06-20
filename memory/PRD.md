@@ -16,14 +16,17 @@ Build a simulation application for **Aira** — a female child humanoid — to l
 - **State**: `zustand` store + localStorage hydration
 - **Backend**: FastAPI (template only)
 
-## Implemented Features (v1.3)
+## Implemented Features (v1.4)
 ### Core simulation
 - 3D viewport with R3F + Rapier physics; orbit/follow/top camera modes
-- Procedural female-child humanoid (Aira) — single capsule physics body with articulated cosmetic skeleton
-- AiController: velocity-based locomotion driving Aira toward goal target
+- **Dual ragdoll modes**:
+  - **Kinematic** (default): single capsule physics body with articulated cosmetic skeleton — runs motion library + curriculum
+  - **Physics**: true multi-body ragdoll — 12 dynamic Rapier bodies connected by **spherical** (waist, neck, shoulders, hips) and **revolute** (elbows, knees) joints; self-collision filtered via `interactionGroups([1],[0])`
+  - **Upright lock toggle**: locks pelvis Y translation + X/Z rotations so she stays standing while limbs hang from joints; un-lock for full ragdoll collapse
+- AiController: velocity-based locomotion driving pelvis toward goal target
 - 6 goals: Idle / Walk to Target / Follow Light / Follow Object / Lift Object / Jump Obstacle
 - Spawnable objects: Box · Ramp · Ball · Target · Light · Lift-Crate (with HTML labels)
-- Save/Wipe localStorage, Pause/Reset/Reset-Aira
+- Save/Wipe localStorage, Pause/Reset/Reset-Aira (handles both ragdoll modes)
 
 ### Articulation & Senses (AI Input)
 - **Articulated skeleton**: spine, head, l/r shoulders, elbows, wrists, fingers, hips, knees as nested groups

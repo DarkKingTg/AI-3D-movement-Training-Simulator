@@ -3,6 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 import Ground from "@/sim/Ground";
 import AiraRagdoll from "@/sim/AiraRagdoll";
+import AiraRagdollPhysics from "@/sim/AiraRagdollPhysics";
 import AiController from "@/sim/AiController";
 import CameraRig from "@/sim/CameraRig";
 import SpawnedObject from "@/sim/SpawnedObject";
@@ -18,6 +19,8 @@ export default function SimulationCanvas() {
   const airaRef = useRef(null);
   const objects = useSimStore((s) => s.objects);
   const paused = useSimStore((s) => s.paused);
+  const ragdollMode = useSimStore((s) => s.ragdoll.mode);
+  const pelvisLocked = useSimStore((s) => s.ragdoll.pelvisLocked);
 
   return (
     <div
@@ -40,7 +43,20 @@ export default function SimulationCanvas() {
 
         <Physics gravity={[0, -9.81, 0]} paused={paused} timeStep={1 / 60}>
           <Ground />
-          <AiraRagdoll ref={airaRef} spawnPosition={[0, 1.3, 0]} />
+          {ragdollMode === "physics" ? (
+            <AiraRagdollPhysics
+              key={`physics-${pelvisLocked}`}
+              ref={airaRef}
+              spawnPosition={[0, 1.0, 0]}
+              pelvisLocked={pelvisLocked}
+            />
+          ) : (
+            <AiraRagdoll
+              key="kinematic"
+              ref={airaRef}
+              spawnPosition={[0, 1.3, 0]}
+            />
+          )}
           <AiController airaRef={airaRef} />
           <MotionPlayer />
           <JointDriver airaRef={airaRef} />
