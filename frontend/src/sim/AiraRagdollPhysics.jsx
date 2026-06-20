@@ -7,6 +7,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useSimStore } from "@/store/simStore";
 import { addImpact } from "@/sim/injuryState";
+import { pulse } from "@/sim/pipelineState";
 
 /**
  * AiraRagdollPhysics — True multi-body ragdoll.
@@ -58,7 +59,7 @@ function FixedJ({ a, b, anchorA, anchorB }) {
 }
 
 // Reusable physics-body capsule with contact-force reporting + material ref
-function CapBody({ refKey, materialRef, position, args, color, mass = 1, name, locked = false, enabledRotations, enabledTranslations, onImpact, children }) {
+function CapBody({ refKey, materialRef, position, args, color, mass = 1, name, locked = false, enabledRotations, enabledTranslations, onImpact, meshHidden, children }) {
   const extra = {};
   if (enabledRotations) extra.enabledRotations = enabledRotations;
   if (enabledTranslations) extra.enabledTranslations = enabledTranslations;
@@ -79,17 +80,17 @@ function CapBody({ refKey, materialRef, position, args, color, mass = 1, name, l
       {...extra}
     >
       <CapsuleCollider args={args} />
-      <mesh castShadow>
+      <mesh castShadow visible={!meshHidden}>
         <capsuleGeometry args={[args[1], args[0] * 2, 4, 14]} />
         <meshStandardMaterial ref={materialRef} color={color} roughness={0.6} />
       </mesh>
-      {children}
+      <group visible={!meshHidden}>{children}</group>
     </RigidBody>
   );
 }
 
 // Sphere body (head)
-function SphereBody({ refKey, materialRef, position, radius, color, mass = 1, name, onImpact, children }) {
+function SphereBody({ refKey, materialRef, position, radius, color, mass = 1, name, onImpact, meshHidden, children }) {
   return (
     <RigidBody
       ref={refKey}
@@ -105,17 +106,17 @@ function SphereBody({ refKey, materialRef, position, radius, color, mass = 1, na
       onContactForce={(payload) => onImpact?.(name, payload)}
     >
       <BallCollider args={[radius]} />
-      <mesh castShadow>
+      <mesh castShadow visible={!meshHidden}>
         <sphereGeometry args={[radius, 28, 28]} />
         <meshStandardMaterial ref={materialRef} color={color} roughness={0.55} />
       </mesh>
-      {children}
+      <group visible={!meshHidden}>{children}</group>
     </RigidBody>
   );
 }
 
 const AiraRagdollPhysics = forwardRef(function AiraPhysics(
-  { spawnPosition = [0, 1.0, 0], pelvisLocked = true },
+  { spawnPosition = [0, 1.0, 0], pelvisLocked = true, meshHidden = false },
   fwd
 ) {
   const [sx, sy, sz] = spawnPosition;
@@ -198,6 +199,9 @@ const AiraRagdollPhysics = forwardRef(function AiraPhysics(
       });
       // Also feed the injury heatmap (module-level, no store churn at 60fps)
       addImpact(partKey, force);
+      pulse("contacts");
+      pulse("physics");
+      pulse("body");
     } catch {}
   }, [addContact]);
 
@@ -287,6 +291,7 @@ const AiraRagdollPhysics = forwardRef(function AiraPhysics(
         mass={3}
         name="aira-pelvis"
         onImpact={onImpact}
+        meshHidden={meshHidden}
         enabledRotations={pelvisLocked ? [false, true, false] : [true, true, true]}
         enabledTranslations={pelvisLocked ? [true, false, true] : [true, true, true]}
       />
@@ -301,6 +306,7 @@ const AiraRagdollPhysics = forwardRef(function AiraPhysics(
         mass={2.5}
         name="aira-torso"
         onImpact={onImpact}
+        meshHidden={meshHidden}
       />
 
       {/* HEAD (sphere) — includes hair, eyes, eye anchor */}
@@ -313,6 +319,7 @@ const AiraRagdollPhysics = forwardRef(function AiraPhysics(
         mass={1.1}
         name="aira-head"
         onImpact={onImpact}
+        meshHidden={meshHidden}
       >
         <mesh position={[0, 0.04, 0]}>
           <sphereGeometry args={[0.168, 28, 28, 0, Math.PI * 2, 0, Math.PI / 1.85]} />
@@ -356,15 +363,15 @@ const AiraRagdollPhysics = forwardRef(function AiraPhysics(
       <object3D ref={eyeAnchor} />
 
       {/* ARMS */}
-      <CapBody refKey={lUpArm} materialRef={matLUpArm} position={pos.lUpArm} args={[0.05, 0.18]} color={TOP} mass={0.6} name="aira-lUpArm" onImpact={onImpact} />
-      <CapBody refKey={rUpArm} materialRef={matRUpArm} position={pos.rUpArm} args={[0.05, 0.18]} color={TOP} mass={0.6} name="aira-rUpArm" onImpact={onImpact} />
-      <CapBody refKey={lLoArm} materialRef={matLLoArm} position={pos.lLoArm} args={[0.045, 0.18]} color={SKIN} mass={0.5} name="aira-lLoArm" onImpact={onImpact}>
+      <CapBody refKey={lUpArm} materialRef={matLUpArm} position={pos.lUpArm} args={[0.05, 0.18]} color={TOP} mass={0.6} name="aira-lUpArm" onImpact={onImpact} meshHidden={meshHidden} />
+      <CapBody refKey={rUpArm} materialRef={matRUpArm} position={pos.rUpArm} args={[0.05, 0.18]} color={TOP} mass={0.6} name="aira-rUpArm" onImpact={onImpact} meshHidden={meshHidden} />
+      <CapBody refKey={lLoArm} materialRef={matLLoArm} position={pos.lLoArm} args={[0.045, 0.18]} color={SKIN} mass={0.5} name="aira-lLoArm" onImpact={onImpact} meshHidden={meshHidden}>
         <mesh position={[0, -0.13, 0]}>
           <boxGeometry args={[0.075, 0.08, 0.04]} />
           <meshStandardMaterial color={SKIN_DARK} />
         </mesh>
       </CapBody>
-      <CapBody refKey={rLoArm} materialRef={matRLoArm} position={pos.rLoArm} args={[0.045, 0.18]} color={SKIN} mass={0.5} name="aira-rLoArm" onImpact={onImpact}>
+      <CapBody refKey={rLoArm} materialRef={matRLoArm} position={pos.rLoArm} args={[0.045, 0.18]} color={SKIN} mass={0.5} name="aira-rLoArm" onImpact={onImpact} meshHidden={meshHidden}>
         <mesh position={[0, -0.13, 0]}>
           <boxGeometry args={[0.075, 0.08, 0.04]} />
           <meshStandardMaterial color={SKIN_DARK} />
@@ -372,15 +379,15 @@ const AiraRagdollPhysics = forwardRef(function AiraPhysics(
       </CapBody>
 
       {/* LEGS */}
-      <CapBody refKey={lUpLeg} materialRef={matLUpLeg} position={pos.lUpLeg} args={[0.065, 0.20]} color={PANTS} mass={1.4} name="aira-lUpLeg" onImpact={onImpact} />
-      <CapBody refKey={rUpLeg} materialRef={matRUpLeg} position={pos.rUpLeg} args={[0.065, 0.20]} color={PANTS} mass={1.4} name="aira-rUpLeg" onImpact={onImpact} />
-      <CapBody refKey={lLoLeg} materialRef={matLLoLeg} position={pos.lLoLeg} args={[0.058, 0.18]} color={PANTS} mass={0.9} name="aira-lLoLeg" onImpact={onImpact}>
+      <CapBody refKey={lUpLeg} materialRef={matLUpLeg} position={pos.lUpLeg} args={[0.065, 0.20]} color={PANTS} mass={1.4} name="aira-lUpLeg" onImpact={onImpact} meshHidden={meshHidden} />
+      <CapBody refKey={rUpLeg} materialRef={matRUpLeg} position={pos.rUpLeg} args={[0.065, 0.20]} color={PANTS} mass={1.4} name="aira-rUpLeg" onImpact={onImpact} meshHidden={meshHidden} />
+      <CapBody refKey={lLoLeg} materialRef={matLLoLeg} position={pos.lLoLeg} args={[0.058, 0.18]} color={PANTS} mass={0.9} name="aira-lLoLeg" onImpact={onImpact} meshHidden={meshHidden}>
         <mesh position={[0, -0.18, 0.04]}>
           <boxGeometry args={[0.12, 0.07, 0.18]} />
           <meshStandardMaterial color={SHOE} />
         </mesh>
       </CapBody>
-      <CapBody refKey={rLoLeg} materialRef={matRLoLeg} position={pos.rLoLeg} args={[0.058, 0.18]} color={PANTS} mass={0.9} name="aira-rLoLeg" onImpact={onImpact}>
+      <CapBody refKey={rLoLeg} materialRef={matRLoLeg} position={pos.rLoLeg} args={[0.058, 0.18]} color={PANTS} mass={0.9} name="aira-rLoLeg" onImpact={onImpact} meshHidden={meshHidden}>
         <mesh position={[0, -0.18, 0.04]}>
           <boxGeometry args={[0.12, 0.07, 0.18]} />
           <meshStandardMaterial color={SHOE} />

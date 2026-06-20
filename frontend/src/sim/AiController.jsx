@@ -2,6 +2,7 @@ import { useRef, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useSimStore, GOALS } from "@/store/simStore";
+import { pulse } from "@/sim/pipelineState";
 
 /**
  * AiController: applies physics forces to Aira's pelvis each frame to drive
@@ -23,11 +24,14 @@ export default function AiController({ airaRef }) {
   const incrementSuccess = useSimStore((s) => s.incrementSuccess);
   const incrementFall = useSimStore((s) => s.incrementFall);
   const resetSignal = useSimStore((s) => s.resetSignal);
+  const pushThought = useSimStore((s) => s.pushThought);
 
   const tRef = useRef(0);
   const successCoolRef = useRef(0);
   const fallCoolRef = useRef(0);
   const lastGoalRef = useRef(goal);
+  const lastStatusRef = useRef("idle");
+  const lastThoughtAtRef = useRef(0);
 
   // Reset Aira to spawn when resetSignal changes — handles both single-body
   // (kinematic) and multi-body (physics) ragdolls by resetting every part.
@@ -58,7 +62,8 @@ export default function AiController({ airaRef }) {
   useEffect(() => {
     lastGoalRef.current = goal;
     successCoolRef.current = 0;
-  }, [goal]);
+    pushThought("decide", `goal → ${goal.replace(/_/g, " ")}`);
+  }, [goal, pushThought]);
 
   useFrame((state, delta) => {
     if (paused) return;
@@ -202,6 +207,42 @@ export default function AiController({ airaRef }) {
       [Number(lv.x.toFixed(2)), Number(lv.y.toFixed(2)), Number(lv.z.toFixed(2))],
       status
     );
+
+    // --- Pipeline pulses (high frequency, module-level, no React churn) ---
+    pulse("brain");
+    if (target && goal !== GOALS.IDLE) {
+      pulse("motor");
+      pulse("physics");
+      pulse("body");
+    }
+
+    // --- AI thoughts (throttled to ~2.5 Hz + on status change) ---
+    const nowMs = performance.now();
+    const statusChanged = status !== lastStatusRef.current;
+    if (statusChanged || nowMs - lastThoughtAtRef.current > 400) {
+      lastThoughtAtRef.current = nowMs;
+      lastStatusRef.current = status;
+      const horizV = Math.hypot(lv.x, lv.z);
+      if (statusChanged && status === "fallen") {
+        pushThought("reflex", `FALL detected · pelvis y=${tr.y.toFixed(2)} m`);
+      } else if (statusChanged && status === "success!") {
+        pushThought("learn", `success! · goal=${goal.replace(/_/g, " ")}`);
+      } else if (statusChanged && status === "jumping") {
+        pushThought("act", `JUMP impulse · target ${distance.toFixed(2)} m ahead`);
+      } else if (statusChanged && status === "lifting") {
+        pushThought("act", `engage lift · target in arms' reach`);
+      } else if (target && goal !== GOALS.IDLE) {
+        pushThought(
+          "decide",
+          `walk → ${targetType || "target"} · ${distance.toFixed(2)} m · v=${horizV.toFixed(2)} m/s`
+        );
+      } else if (status === "idle") {
+        // Only push idle thought rarely
+        if (nowMs - lastThoughtAtRef.current > 2000) {
+          pushThought("sense", "idle · awaiting goal");
+        }
+      }
+    }
   });
 
   return null;

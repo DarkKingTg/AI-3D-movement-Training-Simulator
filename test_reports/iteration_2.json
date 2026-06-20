@@ -1,0 +1,37 @@
+{
+  "summary": "Frontend-only smoke + integration test of v1.7 features (AI Thinking panel, Pipeline panel, GLB Skeleton driver toggles). AI Thinking and Pipeline panels render and integrate correctly with live module state. Found ONE blocking issue: the new Drive-Skeleton and Hide-Procedural toggles are gated behind a GLB upload (rendered only when avatar.url is truthy), so the testids do not exist in the empty-state of the Avatar panel — failing the explicit spec which requires verifying them without uploading a GLB.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AvatarPanel.jsx",
+        "issue": "[data-testid=toggle-drive-skeleton-btn] and [data-testid=toggle-hide-procedural-btn] are not rendered until a GLB is uploaded (they sit inside the `avatar.url ? ... : <dropzone>` true-branch, ~lines 169-208). The review spec explicitly says: 'Without uploading a GLB, verify the [toggle-drive-skeleton-btn] exists' and 'Verify [toggle-hide-procedural-btn] exists and is disabled until Drive Skeleton is ON.' Currently neither button is in the DOM in the empty state, so the spec cannot be satisfied and downstream user-flow tests fail.",
+        "selector": "[data-testid=toggle-drive-skeleton-btn]",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Move the 'SKELETON DRIVER' block (Drive Skeleton + Hide Procedural toggles) in /app/frontend/src/components/sim/AvatarPanel.jsx OUT of the `{avatar.url ? <loaded-state> : <dropzone>}` true-branch so the two toggles always render when the Avatar panel is open. Optionally show a small helper note when no GLB is loaded ('Upload a GLB to actually drive bones').",
+    "Optional: a brief opacity/dim treatment on the toggles when avatar.url is null to make their inertness obvious."
+  ],
+  "critical_code_review_comments": [
+    "AvatarPanel.jsx: the Skeleton-Driver section is gated by an uploaded GLB. This couples UI affordance availability to data presence and makes the buttons untestable / undiscoverable in the empty state. Hoist them above the ternary or render them in both branches.",
+    "PipelinePanel polls module state on a RAF loop (~30 fps) — good. However it calls setState every tick which still causes a React rerender of the whole panel; consider using a useSyncExternalStore subscription with shallow-equal comparators or imperatively updating SVG attributes via refs to avoid reconciliation cost when intensities don't change.",
+    "PipelinePanel's PacketAlongPath uses SMIL animateMotion (per spec). Note: SMIL is deprecated in Chrome for some features — acceptable for now but worth tracking.",
+    "AIThinkingPanel auto-scrolls to top on every thought push; with thoughts streaming at ~3/s the listRef.current.scrollTop=0 effect runs constantly — harmless but unnecessary when already at top.",
+    "simStore.persist swallows errors silently (`catch {}`) — same comment as iteration_1; still unaddressed.",
+    "simStore.toggleAiThinkingPanel / togglePipelinePanel persist on every toggle which writes the whole snapshot — acceptable but could be debounced."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "~85% (8/9 scenarios pass, 1 spec-blocking issue in Avatar panel)"},
+  "test_credentials": "none required (no auth)",
+  "seed_data_creation": "App auto-seeds curriculum and 2 objects on first load when localStorage is empty.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run with `localStorage.clear()` then reload. Verified: (1) [data-testid=open-ai-thinking-panel-btn] opens [ai-thinking-panel], initial DECIDE thought present ('goal → idle'). (2) Changing Goal dropdown to Walk to Target then clicking Re-Assign Goal pushes a new DECIDE row at the TOP of [ai-thoughts-list] with text like 'walk → target · 2.44 m · v=0.00 m/s' and yellow left border (rgb(255,234,0)). (3) [clear-ai-thoughts-btn] empties the list (new thoughts may stream in within ms). (4) [open-pipeline-panel-btn] (top-right) opens [pipeline-panel] containing [pipeline-svg]; all 8 nodes [pipeline-node-*] and 8 stage cards [pipeline-stage-*] render with labels VISION/IMU/CONTACTS/SENSES/BRAIN/MOTOR/PHYSICS/BODY. (5) With Walk to Target active, brain stage border = rgb(255,234,0); after 4.5 s flow counters were vision=65 imu=65 senses=130 brain=65 motor=40 physics=40 body=40 contacts=0. (6) Console only emits the known WebGL `ReadPixels` GPU-stall WARNING — no React key warnings, no THREE NaN, no Rapier errors. (7) Avatar panel: in EMPTY (no GLB uploaded) state, [toggle-drive-skeleton-btn] and [toggle-hide-procedural-btn] do not exist in the DOM — that's the bug. Once a GLB is uploaded the buttons render correctly (code review confirms the toggle/disable logic is wired). After main agent moves the toggles outside the avatar.url branch, re-run scenarios 6-7 of the spec.",
+  "rca of the issue": "ROOT CAUSE: In /app/frontend/src/components/sim/AvatarPanel.jsx the Skeleton-Driver block (lines 169-208) is inside the truthy branch of `{!avatar.url ? <dropzone> : <>...skeleton-driver...</>}`. Without an uploaded GLB, only the dropzone JSX is mounted and the two toggle buttons never reach the DOM. FIX: Render the SKELETON DRIVER block unconditionally below the file-state UI, regardless of avatar.url; keep the existing `disabled={!avatar.driveSkeleton}` guard on Hide Procedural; optionally also disable Drive Skeleton (or dim it) when avatar.url is null to communicate that no driving will happen yet. REPRO: Hard refresh → open Avatar panel → query `document.querySelector('[data-testid=toggle-drive-skeleton-btn]')` returns null."
+}

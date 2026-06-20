@@ -23,7 +23,16 @@ export default function MotionPlayer() {
   // Reset timer when active motion changes
   useEffect(() => {
     tRef.current = 0;
-  }, [teaching.activeMotion]);
+    if (teaching.playing && teaching.activeMotion) {
+      try {
+        const m = MOTIONS[teaching.activeMotion];
+        useSimStore.getState().pushThought(
+          "act",
+          `teach · play "${m?.name || teaching.activeMotion}" @ ${(teaching.speed || 1).toFixed(2)}×`
+        );
+      } catch {}
+    }
+  }, [teaching.activeMotion, teaching.playing, teaching.speed]);
 
   useFrame((_, delta) => {
     if (!teaching.playing || !teaching.activeMotion) return;

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useSimStore } from "@/store/simStore";
-import { Upload, User, ChevronDown, ChevronRight, X, Eye, EyeOff, Trash2, Sliders } from "lucide-react";
+import { Upload, User, ChevronDown, ChevronRight, X, Eye, EyeOff, Trash2, Sliders, Activity, Ghost } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -28,6 +28,8 @@ export default function AvatarPanel() {
   const setGlbScale = useSimStore((s) => s.setGlbScale);
   const setGlbMapping = useSimStore((s) => s.setGlbMapping);
   const clearGlb = useSimStore((s) => s.clearGlb);
+  const toggleDriveSkeleton = useSimStore((s) => s.toggleDriveSkeleton);
+  const toggleHideProcedural = useSimStore((s) => s.toggleHideProcedural);
   const fileInputRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [showBones, setShowBones] = useState(false);
@@ -164,8 +166,49 @@ export default function AvatarPanel() {
             </div>
           )}
 
+          {/* === Drive Skeleton toggles === */}
+          <div className="flex flex-col gap-2 bg-black/40 border border-white/10 rounded-lg p-2.5">
+            <div className="text-[9px] font-mono uppercase tracking-[0.22em] text-zinc-400">SKELETON DRIVER</div>
+            <button
+              data-testid="toggle-drive-skeleton-btn"
+              onClick={toggleDriveSkeleton}
+              className={`flex items-center justify-between text-[10px] uppercase tracking-[0.22em] py-2 px-3 rounded border ${
+                avatar.driveSkeleton
+                  ? "border-[#00ff88]/60 bg-[#00ff88]/10 text-[#00ff88]"
+                  : "border-white/15 text-zinc-300 hover:border-white/30"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <Activity className="w-3 h-3" />
+                Drive Skeleton from Aira
+              </span>
+              <span className="font-mono">{avatar.driveSkeleton ? "ON" : "OFF"}</span>
+            </button>
+            <button
+              data-testid="toggle-hide-procedural-btn"
+              onClick={toggleHideProcedural}
+              disabled={!avatar.driveSkeleton}
+              className={`flex items-center justify-between text-[10px] uppercase tracking-[0.22em] py-2 px-3 rounded border ${
+                avatar.driveSkeleton && avatar.hideProcedural
+                  ? "border-[#FFEA00]/60 bg-[#FFEA00]/10 text-[#FFEA00]"
+                  : "border-white/15 text-zinc-300 hover:border-white/30"
+              } ${!avatar.driveSkeleton ? "opacity-40 cursor-not-allowed" : ""}`}
+            >
+              <span className="flex items-center gap-2">
+                <Ghost className="w-3 h-3" />
+                Hide Procedural Aira
+              </span>
+              <span className="font-mono">{avatar.hideProcedural ? "ON" : "OFF"}</span>
+            </button>
+            <div className="text-[9px] font-mono text-zinc-500 leading-relaxed">
+              {avatar.driveSkeleton
+                ? "GLB is anchored to pelvis · mapped bones inherit Aira's joint rotations every frame."
+                : "Enable to swap procedural Aira for your imported avatar — physics still simulates."}
+            </div>
+          </div>
+
           <div className="text-[9px] font-mono text-zinc-500 leading-relaxed">
-            v1: Avatar renders as a non-interactive preview at +2x in scene. Auto-mapping populates each bone&apos;s best-guess Aira joint slot — driving the GLB skeleton from joint state is the next step.
+            Mapping persists across reloads. Switch ragdoll modes freely; the driver auto-resolves physics ↔ kinematic bones.
           </div>
         </>
       )}

@@ -28,7 +28,7 @@ const PANTS = "#1e2740";
 const SHOE = "#202020";
 const BOW = "#FFEA00";
 
-const AiraRagdoll = forwardRef(function Aira({ spawnPosition = [0, 1.0, 0] }, fwd) {
+const AiraRagdoll = forwardRef(function Aira({ spawnPosition = [0, 1.0, 0], meshHidden = false }, fwd) {
   const body = useRef(null);
 
   // Bone group refs (used to apply joint rotations)
@@ -106,7 +106,7 @@ const AiraRagdoll = forwardRef(function Aira({ spawnPosition = [0, 1.0, 0] }, fw
       <CapsuleCollider args={[0.3, 0.18]} />
 
       {/* SPINE bone — rotates whole torso */}
-      <group ref={bones.spine} position={[0, 0, 0]}>
+      <group ref={bones.spine} position={[0, 0, 0]} visible={!meshHidden}>
         {/* TORSO mesh */}
         <mesh name="aira-torso" position={[0, 0, 0]}>
           <capsuleGeometry args={[0.16, 0.28, 4, 14]} />

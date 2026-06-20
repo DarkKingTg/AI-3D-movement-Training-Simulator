@@ -59,6 +59,12 @@ export default function CurriculumDirector({ airaRef }) {
     if (dist < 0.8 && lapStartedAt) {
       const lapTime = (performance.now() - lapStartedAt) / 1000;
       completeLap(lapTime, CURRICULUM[levelIdx]);
+      try {
+        useSimStore.getState().pushThought(
+          "learn",
+          `lap complete · L${levelIdx + 1} in ${lapTime.toFixed(2)} s`
+        );
+      } catch {}
     }
   });
 

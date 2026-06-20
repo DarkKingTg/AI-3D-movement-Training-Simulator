@@ -45,6 +45,24 @@ Build a simulation application for **Aira** — a female child humanoid — to l
 - Auto-mapping heuristic guesses the matching Aira joint slot per bone (e.g. `LeftUpperArm` → `lShoulder`); user can override per row via Select
 - Mapping is persisted in store ready for the next iteration where the GLB skeleton is driven from joint state
 
+### GLB Skeleton Driver (NEW v1.7)
+- "Drive Skeleton" toggle in AvatarPanel anchors the GLB root to Aira's pelvis world transform every frame
+- For each mapped GLB bone, the matching Aira source quaternion (rigid body in physics mode, `THREE.Object3D` in kinematic mode) is converted to local-parent space and slerped onto `bone.quaternion`
+- Optional "Hide Procedural Aira" toggle (only enabled when Drive Skeleton is ON) — the procedural meshes hide while physics keeps simulating, so the imported GLB visually replaces Aira while sensors, AI, and senses keep running unchanged
+- Slot resolver handles ragdoll-mode switches (physics ↔ kinematic) transparently
+
+### AI Thinking Stream (NEW v1.7)
+- New `AIThinkingPanel` (bottom-left) — live ring buffer (≤60 entries) of Aira's "internal monologue"
+- Thoughts are pushed by AiController (decide/act/reflex), MotionPlayer (act), CurriculumDirector (learn) at ~2.5 Hz with color-coded categories (sense/decide/act/reflex/learn/audio/motor)
+- Auto-scroll to newest with entrance animation; clear button per session
+
+### AI Pipeline Visualization (NEW v1.7)
+- New `PipelinePanel` (top-right) — SVG diagram of the perception → cognition → action loop with 8 nodes (vision · imu · contacts · senses · brain · motor · physics · body)
+- High-frequency stage pulses live in module-level `pipelineState.js` (no Zustand churn) and decay over 600 ms
+- Animated halos + SMIL packet-along-path on each connection when both endpoints are active
+- Stage detail grid with flow counters and intensity bars
+- Closed feedback edge: body → vision (movement creates new visual input)
+
 ### Articulation & Senses (AI Input)
 - **Articulated skeleton**: spine, head, l/r shoulders, elbows, wrists, fingers, hips, knees as nested groups (kinematic mode) **or** 12 dynamic Rapier bodies + 9 joints (physics mode)
 - **Anatomical joint limits** (anatomy.js): clamped at human RoM (e.g. elbow 0–145°, neck ±70° yaw)

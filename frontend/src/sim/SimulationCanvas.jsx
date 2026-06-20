@@ -25,6 +25,10 @@ export default function SimulationCanvas() {
   const paused = useSimStore((s) => s.paused);
   const ragdollMode = useSimStore((s) => s.ragdoll.mode);
   const pelvisLocked = useSimStore((s) => s.ragdoll.pelvisLocked);
+  const driveSkeleton = useSimStore((s) => s.glbAvatar.driveSkeleton);
+  const hideProcedural = useSimStore((s) => s.glbAvatar.hideProcedural);
+  const glbLoaded = useSimStore((s) => !!s.glbAvatar.url);
+  const meshHidden = driveSkeleton && hideProcedural && glbLoaded;
 
   return (
     <div
@@ -53,12 +57,14 @@ export default function SimulationCanvas() {
               ref={airaRef}
               spawnPosition={[0, 1.0, 0]}
               pelvisLocked={pelvisLocked}
+              meshHidden={meshHidden}
             />
           ) : (
             <AiraRagdoll
               key="kinematic"
               ref={airaRef}
               spawnPosition={[0, 1.3, 0]}
+              meshHidden={meshHidden}
             />
           )}
           <AiController airaRef={airaRef} />
@@ -72,7 +78,7 @@ export default function SimulationCanvas() {
           {objects.map((o) => (
             <SpawnedObject key={o.id} object={o} />
           ))}
-          <GLBPreview />
+          <GLBPreview airaRef={airaRef} />
         </Physics>
 
         <VisionCamera airaRef={airaRef} />

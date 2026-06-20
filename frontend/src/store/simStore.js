@@ -115,6 +115,24 @@ const initial = {
     scale: 1.0,
     bones: [],
     mapping: {}, // glbBoneName -> airaSlot (e.g., "head", "lShoulder")
+    driveSkeleton: false,    // when true, GLB anchors to pelvis & bones follow Aira's rotations
+    hideProcedural: false,   // when true, hide the procedural Aira meshes (physics still simulating)
+  },
+
+  // --- AI Thinking / Pipeline visualization ---
+  aiThinkingPanelOpen: false,
+  pipelinePanelOpen: false,
+  aiThoughts: [], // [{ id, kind: 'sense'|'decide'|'act'|'learn'|'reflex', text, t }]
+  // pipelineStages: each stage has lastActiveAt timestamp; UI computes "active" pulse if recent
+  pipelineStages: {
+    vision:   { lastActiveAt: 0, label: "VISION",   color: "#00d4ff" },
+    imu:      { lastActiveAt: 0, label: "IMU",      color: "#00ff88" },
+    contacts: { lastActiveAt: 0, label: "CONTACTS", color: "#ff6666" },
+    senses:   { lastActiveAt: 0, label: "SENSES",   color: "#A78BFA" },
+    brain:    { lastActiveAt: 0, label: "BRAIN",    color: "#FFEA00" },
+    motor:    { lastActiveAt: 0, label: "MOTOR",    color: "#ff9900" },
+    physics:  { lastActiveAt: 0, label: "PHYSICS",  color: "#ff3366" },
+    body:     { lastActiveAt: 0, label: "BODY",     color: "#ffffff" },
   },
 };
 
@@ -154,6 +172,8 @@ function persist(state) {
       fallsClips: state.fallsClips,
       fallsPanelOpen: state.fallsPanelOpen,
       injuries: { enabled: state.injuries.enabled },
+      aiThinkingPanelOpen: state.aiThinkingPanelOpen,
+      pipelinePanelOpen: state.pipelinePanelOpen,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   } catch {}
@@ -377,7 +397,33 @@ export const useSimStore = create((set, get) => {
         },
       })),
     clearGlb: () => set((s) => ({
-      glbAvatar: { url: null, filename: null, previewVisible: true, scale: 1.0, bones: [], mapping: {} },
+      glbAvatar: { url: null, filename: null, previewVisible: true, scale: 1.0, bones: [], mapping: {}, driveSkeleton: false, hideProcedural: false },
     })),
+    toggleDriveSkeleton: () =>
+      set((s) => ({ glbAvatar: { ...s.glbAvatar, driveSkeleton: !s.glbAvatar.driveSkeleton } })),
+    toggleHideProcedural: () =>
+      set((s) => ({ glbAvatar: { ...s.glbAvatar, hideProcedural: !s.glbAvatar.hideProcedural } })),
+
+    // --- AI Thinking / Pipeline visualization ---
+    toggleAiThinkingPanel: () => { set((s) => ({ aiThinkingPanelOpen: !s.aiThinkingPanelOpen })); persist(get()); },
+    togglePipelinePanel:   () => { set((s) => ({ pipelinePanelOpen: !s.pipelinePanelOpen })); persist(get()); },
+    pushThought: (kind, text) =>
+      set((s) => ({
+        aiThoughts: [
+          { id: (s.aiThoughts[0]?.id ?? 0) + 1, kind, text, t: Date.now() },
+          ...s.aiThoughts,
+        ].slice(0, 60),
+      })),
+    clearThoughts: () => set({ aiThoughts: [] }),
+    pulseStage: (stage) =>
+      set((s) => {
+        if (!s.pipelineStages[stage]) return {};
+        return {
+          pipelineStages: {
+            ...s.pipelineStages,
+            [stage]: { ...s.pipelineStages[stage], lastActiveAt: Date.now() },
+          },
+        };
+      }),
   };
 });

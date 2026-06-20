@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useSimStore } from "@/store/simStore";
+import { pulse } from "@/sim/pipelineState";
 
 /**
  * VisionCamera — Aira's first-person eye view.
@@ -80,6 +81,8 @@ export default function VisionCamera({ airaRef }) {
         flipped.set(pixelBuf.subarray(srcRow, srcRow + W * 4), dstRow);
       }
       updateVision(flipped, W, H, FOV_DEG);
+      pulse("vision");
+      pulse("senses");
     }
 
     // IMU/proprioception throttled to ~10Hz
@@ -131,6 +134,8 @@ export default function VisionCamera({ airaRef }) {
         if (o.type === "target") closestDist = +dist.toFixed(2);
       }
       updateVisibleObjects(visible.sort((a, b) => a.distance - b.distance).slice(0, 6), closestDist);
+      pulse("imu");
+      pulse("senses");
     }
   });
 

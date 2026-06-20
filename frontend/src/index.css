@@ -94,3 +94,12 @@ code, .mono {
 .no-select { user-select: none; -webkit-user-select: none; }
 
 canvas { display: block; }
+
+/* AI Thought entrance animation */
+@keyframes thoughtIn {
+  0%   { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-thought-in {
+  animation: thoughtIn 0.22s ease-out;
+}

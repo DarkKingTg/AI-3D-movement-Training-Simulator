@@ -8,6 +8,8 @@ import JointPanel from "@/components/sim/JointPanel";
 import TeachPanel from "@/components/sim/TeachPanel";
 import FallsPanel from "@/components/sim/FallsPanel";
 import AvatarPanel from "@/components/sim/AvatarPanel";
+import AIThinkingPanel from "@/components/sim/AIThinkingPanel";
+import PipelinePanel from "@/components/sim/PipelinePanel";
 import { Toaster } from "@/components/ui/sonner";
 import { useSimStore } from "@/store/simStore";
 
@@ -61,12 +63,14 @@ export default function Simulation() {
         }}
       />
 
-      {/* Floating sensor + manual-pose + teach + falls panels */}
+      {/* Floating sensor + manual-pose + teach + falls + avatar + ai-thinking + pipeline panels */}
       <SensorPanel />
       <JointPanel />
       <TeachPanel />
       <FallsPanel />
       <AvatarPanel />
+      <AIThinkingPanel />
+      <PipelinePanel />
     </div>
   );
 }
