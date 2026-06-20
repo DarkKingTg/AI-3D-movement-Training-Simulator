@@ -166,52 +166,60 @@ export default function AvatarPanel() {
             </div>
           )}
 
-          {/* === Drive Skeleton toggles === */}
-          <div className="flex flex-col gap-2 bg-black/40 border border-white/10 rounded-lg p-2.5">
-            <div className="text-[9px] font-mono uppercase tracking-[0.22em] text-zinc-400">SKELETON DRIVER</div>
-            <button
-              data-testid="toggle-drive-skeleton-btn"
-              onClick={toggleDriveSkeleton}
-              className={`flex items-center justify-between text-[10px] uppercase tracking-[0.22em] py-2 px-3 rounded border ${
-                avatar.driveSkeleton
-                  ? "border-[#00ff88]/60 bg-[#00ff88]/10 text-[#00ff88]"
-                  : "border-white/15 text-zinc-300 hover:border-white/30"
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                <Activity className="w-3 h-3" />
-                Drive Skeleton from Aira
-              </span>
-              <span className="font-mono">{avatar.driveSkeleton ? "ON" : "OFF"}</span>
-            </button>
-            <button
-              data-testid="toggle-hide-procedural-btn"
-              onClick={toggleHideProcedural}
-              disabled={!avatar.driveSkeleton}
-              className={`flex items-center justify-between text-[10px] uppercase tracking-[0.22em] py-2 px-3 rounded border ${
-                avatar.driveSkeleton && avatar.hideProcedural
-                  ? "border-[#FFEA00]/60 bg-[#FFEA00]/10 text-[#FFEA00]"
-                  : "border-white/15 text-zinc-300 hover:border-white/30"
-              } ${!avatar.driveSkeleton ? "opacity-40 cursor-not-allowed" : ""}`}
-            >
-              <span className="flex items-center gap-2">
-                <Ghost className="w-3 h-3" />
-                Hide Procedural Aira
-              </span>
-              <span className="font-mono">{avatar.hideProcedural ? "ON" : "OFF"}</span>
-            </button>
-            <div className="text-[9px] font-mono text-zinc-500 leading-relaxed">
-              {avatar.driveSkeleton
-                ? "GLB is anchored to pelvis · mapped bones inherit Aira's joint rotations every frame."
-                : "Enable to swap procedural Aira for your imported avatar — physics still simulates."}
-            </div>
-          </div>
-
           <div className="text-[9px] font-mono text-zinc-500 leading-relaxed">
             Mapping persists across reloads. Switch ragdoll modes freely; the driver auto-resolves physics ↔ kinematic bones.
           </div>
         </>
       )}
+
+      {/* === Drive Skeleton toggles (always visible while panel is open) === */}
+      <div className={`flex flex-col gap-2 bg-black/40 border border-white/10 rounded-lg p-2.5 ${!avatar.url ? "opacity-70" : ""}`}>
+        <div className="flex items-center justify-between">
+          <div className="text-[9px] font-mono uppercase tracking-[0.22em] text-zinc-400">SKELETON DRIVER</div>
+          {!avatar.url && (
+            <div className="text-[8px] font-mono text-zinc-500">upload a GLB first</div>
+          )}
+        </div>
+        <button
+          data-testid="toggle-drive-skeleton-btn"
+          onClick={toggleDriveSkeleton}
+          disabled={!avatar.url}
+          className={`flex items-center justify-between text-[10px] uppercase tracking-[0.22em] py-2 px-3 rounded border ${
+            avatar.driveSkeleton
+              ? "border-[#00ff88]/60 bg-[#00ff88]/10 text-[#00ff88]"
+              : "border-white/15 text-zinc-300 hover:border-white/30"
+          } ${!avatar.url ? "opacity-40 cursor-not-allowed" : ""}`}
+        >
+          <span className="flex items-center gap-2">
+            <Activity className="w-3 h-3" />
+            Drive Skeleton from Aira
+          </span>
+          <span className="font-mono">{avatar.driveSkeleton ? "ON" : "OFF"}</span>
+        </button>
+        <button
+          data-testid="toggle-hide-procedural-btn"
+          onClick={toggleHideProcedural}
+          disabled={!avatar.url || !avatar.driveSkeleton}
+          className={`flex items-center justify-between text-[10px] uppercase tracking-[0.22em] py-2 px-3 rounded border ${
+            avatar.driveSkeleton && avatar.hideProcedural
+              ? "border-[#FFEA00]/60 bg-[#FFEA00]/10 text-[#FFEA00]"
+              : "border-white/15 text-zinc-300 hover:border-white/30"
+          } ${(!avatar.url || !avatar.driveSkeleton) ? "opacity-40 cursor-not-allowed" : ""}`}
+        >
+          <span className="flex items-center gap-2">
+            <Ghost className="w-3 h-3" />
+            Hide Procedural Aira
+          </span>
+          <span className="font-mono">{avatar.hideProcedural ? "ON" : "OFF"}</span>
+        </button>
+        <div className="text-[9px] font-mono text-zinc-500 leading-relaxed">
+          {!avatar.url
+            ? "Drop a GLB above, then turn this on to animate it from Aira's live joint rotations."
+            : avatar.driveSkeleton
+              ? "GLB is anchored to pelvis · mapped bones inherit Aira's joint rotations every frame."
+              : "Enable to swap procedural Aira for your imported avatar — physics still simulates."}
+        </div>
+      </div>
     </aside>
   );
 }

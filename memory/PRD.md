@@ -63,6 +63,9 @@ Build a simulation application for **Aira** — a female child humanoid — to l
 - Stage detail grid with flow counters and intensity bars
 - Closed feedback edge: body → vision (movement creates new visual input)
 
+### v1.7 Bug Fix (post-test)
+- Skeleton Driver toggles in AvatarPanel now render **unconditionally** when the panel is open (previously gated by GLB upload) — they show a dimmed/disabled state with "upload a GLB first" hint until a model is loaded.
+
 ### Articulation & Senses (AI Input)
 - **Articulated skeleton**: spine, head, l/r shoulders, elbows, wrists, fingers, hips, knees as nested groups (kinematic mode) **or** 12 dynamic Rapier bodies + 9 joints (physics mode)
 - **Anatomical joint limits** (anatomy.js): clamped at human RoM (e.g. elbow 0–145°, neck ±70° yaw)
