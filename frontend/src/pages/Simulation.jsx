@@ -7,6 +7,7 @@ import SensorPanel from "@/components/sim/SensorPanel";
 import JointPanel from "@/components/sim/JointPanel";
 import TeachPanel from "@/components/sim/TeachPanel";
 import FallsPanel from "@/components/sim/FallsPanel";
+import AvatarPanel from "@/components/sim/AvatarPanel";
 import { Toaster } from "@/components/ui/sonner";
 import { useSimStore } from "@/store/simStore";
 
@@ -65,6 +66,7 @@ export default function Simulation() {
       <JointPanel />
       <TeachPanel />
       <FallsPanel />
+      <AvatarPanel />
     </div>
   );
 }

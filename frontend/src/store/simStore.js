@@ -85,13 +85,13 @@ const initial = {
   // --- Falls compilation / replay ---
   recorder: {
     enabled: true,
-    recordingPostFall: false,    // true after a fall is detected, while we capture 3 more seconds
+    recordingPostFall: false,
     postFallEndsAt: 0,
     peakForce: 0,
-    levelHint: null,             // current level name for clip metadata
+    levelHint: null,
   },
-  fallsBuffer: [],               // rolling pre-fall snapshots
-  fallsClips: [],                // saved clips
+  fallsBuffer: [],
+  fallsClips: [],
   fallsPanelOpen: false,
   playback: {
     clipId: null,
@@ -99,6 +99,22 @@ const initial = {
     frameIndex: 0,
     playing: false,
     startedAt: 0,
+  },
+
+  // --- Injury heatmap ---
+  injuries: {
+    enabled: true,
+    levels: {},
+  },
+
+  // --- GLB Avatar ---
+  glbAvatar: {
+    url: null,
+    filename: null,
+    previewVisible: true,
+    scale: 1.0,
+    bones: [],
+    mapping: {}, // glbBoneName -> airaSlot (e.g., "head", "lShoulder")
   },
 };
 
@@ -137,6 +153,7 @@ function persist(state) {
       recorder: { enabled: state.recorder.enabled },
       fallsClips: state.fallsClips,
       fallsPanelOpen: state.fallsPanelOpen,
+      injuries: { enabled: state.injuries.enabled },
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   } catch {}
@@ -328,5 +345,39 @@ export const useSimStore = create((set, get) => {
       set((s) => ({ playback: { ...s.playback, playing: false, frameIndex: 0 } })),
     setPlaybackSpeed: (speed) => set((s) => ({ playback: { ...s.playback, speed } })),
     setPlaybackFrame: (frameIndex) => set((s) => ({ playback: { ...s.playback, frameIndex } })),
+
+    // --- Injury heatmap ---
+    toggleInjuries: () => {
+      set((s) => ({ injuries: { ...s.injuries, enabled: !s.injuries.enabled } }));
+      persist(get());
+    },
+    updateInjurySnapshot: (levels) =>
+      set((s) => ({ injuries: { ...s.injuries, levels } })),
+
+    // --- GLB Avatar ---
+    setGlbUrl: (url, filename) =>
+      set((s) => ({ glbAvatar: { ...s.glbAvatar, url, filename, bones: [], mapping: {} } })),
+    toggleGlbPreview: () =>
+      set((s) => ({ glbAvatar: { ...s.glbAvatar, previewVisible: !s.glbAvatar.previewVisible } })),
+    setGlbScale: (scale) =>
+      set((s) => ({ glbAvatar: { ...s.glbAvatar, scale } })),
+    updateGlbBoneTree: (bones) => {
+      const cur = get().glbAvatar.mapping;
+      const seedMapping = { ...cur };
+      bones.forEach((b) => {
+        if (!seedMapping[b.name] && b.guess) seedMapping[b.name] = b.guess;
+      });
+      set((s) => ({ glbAvatar: { ...s.glbAvatar, bones, mapping: seedMapping } }));
+    },
+    setGlbMapping: (boneName, slot) =>
+      set((s) => ({
+        glbAvatar: {
+          ...s.glbAvatar,
+          mapping: { ...s.glbAvatar.mapping, [boneName]: slot === "_none" ? undefined : slot },
+        },
+      })),
+    clearGlb: () => set((s) => ({
+      glbAvatar: { url: null, filename: null, previewVisible: true, scale: 1.0, bones: [], mapping: {} },
+    })),
   };
 });

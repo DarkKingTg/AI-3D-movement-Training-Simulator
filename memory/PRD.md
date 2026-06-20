@@ -26,13 +26,24 @@ Build a simulation application for **Aira** — a female child humanoid — to l
 - Spawnable objects: Box · Ramp · Ball · Target · Light · Lift-Crate · **Stairs** (procedural 4-step staircase)
 - Save/Wipe localStorage, Pause/Reset/Reset-Aira
 
-### Falls Compilation (NEW v1.5)
-- **Auto-recording**: every frame at 10 Hz, snapshots all 11 body transforms into a rolling 3-second pre-fall buffer
-- **Fall detection**: pelvis y < 0.4 m OR any contact force > 40 N
-- **Post-fall capture**: continues capturing 3 more seconds, then bundles the pre+post buffer into a named clip with metadata (`peakForce`, `durationSec`, `frameCount`, `level`)
-- **FallReplayer**: in-canvas component that warps live bodies to recorded transforms each frame → slow-mo playback (0.1×–1.0×)
-- **FallsPanel UI**: lists clips with one-click slow-mo replay, share (clipboard summary), download (JSON file), delete; recorder on/off toggle, wipe-all button
-- Persisted across reloads in localStorage
+### Falls Compilation (v1.5)
+- Auto-record 3 s pre/post every fall, 10 Hz body-transform snapshots
+- Fall detection: pelvis y < 0.4 m OR contact force > 40 N
+- In-canvas FallReplayer warps live bodies to recorded transforms each frame for smooth slow-mo (0.1×–1.0×)
+- FallsPanel UI: per-clip play / share / download JSON / delete + recorder toggle
+
+### Injury Heatmap (NEW v1.6)
+- Module-level `injuryLevels` Map accumulates impact force per body part outside the Zustand store (60 Hz write traffic isolated from React renders)
+- 2.5-second half-life exponential decay each frame
+- `InjuryHeatmap` in-canvas component reads material refs from `AiraRagdollPhysics.materials` and lerps each limb's emissive color toward red, scaling `emissiveIntensity` 0.2 → 1.4 with injury level
+- Per-part normalized levels mirrored to `injuries.levels` in the store at 4 Hz for the AI Input Feed
+
+### GLB Avatar Preview (NEW v1.6)
+- Drag-and-drop / file-pick GLB/glTF upload from the AvatarPanel
+- Loaded via drei `useGLTF`, rendered as a non-interactive preview at +2 m offset
+- Bone-tree walker enumerates every `THREE.Bone` in the scene
+- Auto-mapping heuristic guesses the matching Aira joint slot per bone (e.g. `LeftUpperArm` → `lShoulder`); user can override per row via Select
+- Mapping is persisted in store ready for the next iteration where the GLB skeleton is driven from joint state
 
 ### Articulation & Senses (AI Input)
 - **Articulated skeleton**: spine, head, l/r shoulders, elbows, wrists, fingers, hips, knees as nested groups (kinematic mode) **or** 12 dynamic Rapier bodies + 9 joints (physics mode)

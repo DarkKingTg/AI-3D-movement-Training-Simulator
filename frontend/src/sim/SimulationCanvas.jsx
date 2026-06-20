@@ -14,6 +14,8 @@ import ContactSensor from "@/sim/ContactSensor";
 import CurriculumDirector from "@/sim/CurriculumDirector";
 import FallRecorder from "@/sim/FallRecorder";
 import FallReplayer from "@/sim/FallReplayer";
+import InjuryHeatmap from "@/sim/InjuryHeatmap";
+import GLBPreview from "@/sim/GLBPreview";
 import { useSimStore } from "@/store/simStore";
 import { SIM } from "@/constants/testIds";
 
@@ -66,9 +68,11 @@ export default function SimulationCanvas() {
           <CurriculumDirector airaRef={airaRef} />
           <FallRecorder airaRef={airaRef} />
           <FallReplayer airaRef={airaRef} />
+          <InjuryHeatmap airaRef={airaRef} />
           {objects.map((o) => (
             <SpawnedObject key={o.id} object={o} />
           ))}
+          <GLBPreview />
         </Physics>
 
         <VisionCamera airaRef={airaRef} />
