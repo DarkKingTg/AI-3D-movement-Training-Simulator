@@ -1,0 +1,84 @@
+{
+  "theme": "DARK",
+  "archetype": "Archetype 4 (Swiss & High-Contrast)",
+  "colors": {
+    "background": "#000000",
+    "surface": "#121212",
+    "surface_glass": "rgba(10, 10, 10, 0.75)",
+    "primary": "#002FA7",
+    "primary_hover": "#003DD1",
+    "accent_red": "#FF0000",
+    "accent_yellow": "#FFEA00",
+    "accent_green": "#00FF00",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#A1A1AA",
+    "border": "rgba(255, 255, 255, 0.15)"
+  },
+  "typography": {
+    "heading_font": "Chivo",
+    "body_font": "IBM Plex Sans",
+    "mono_font": "JetBrains Mono",
+    "hierarchy": {
+      "h1": "text-4xl tracking-tighter font-black",
+      "h2": "text-2xl tracking-tight font-bold",
+      "h3": "text-xl tracking-tight font-bold",
+      "body": "text-sm leading-relaxed",
+      "telemetry": "text-xs font-mono tracking-wider",
+      "label": "text-[10px] uppercase tracking-[0.2em] text-[#A1A1AA]"
+    }
+  },
+  "layout": {
+    "type": "Editor / Control Room",
+    "spacing_scale": "dense",
+    "panels": {
+      "sidebar_width": "w-80",
+      "floating_gap": "gap-6",
+      "padding": "p-6"
+    }
+  },
+  "components": {
+    "panel": "backdrop-blur-2xl bg-surface_glass border border-white/10 rounded-xl shadow-2xl",
+    "button_primary": "bg-primary text-white font-bold hover:bg-primary_hover transition-colors rounded uppercase tracking-wider text-xs px-4 py-3 flex items-center justify-center gap-2",
+    "button_secondary": "bg-transparent border border-white/20 text-white hover:bg-white/10 transition-colors rounded text-xs px-4 py-2 flex items-center gap-2",
+    "card": "bg-white/5 border border-white/10 rounded-lg p-4",
+    "telemetry_box": "font-mono text-accent_green bg-black/60 p-3 rounded border border-accent_green/30 w-full flex justify-between items-center",
+    "input_slider": "w-full accent-primary"
+  },
+  "assets": {
+    "aira_avatar": {
+      "url": "https://images.pexels.com/photos/33168444/pexels-photo-33168444.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Young child portrait used for Aira's profile in the UI"
+    }
+  },
+  "dependencies": [
+    "@react-three/fiber",
+    "@react-three/drei",
+    "@react-three/rapier",
+    "lucide-react",
+    "clsx",
+    "tailwind-merge",
+    "zustand"
+  ],
+  "shadcn_components": [
+    "slider",
+    "select",
+    "dropdown-menu",
+    "button"
+  ],
+  "icons": {
+    "library": "lucide-react",
+    "usage": "Use icons for Object Spawner buttons (Box, Circle, Sun for light) and Goal states (Target, Navigation, AlertTriangle)"
+  },
+  "instructions_to_main_agent": [
+    "Build a fullscreen layout using R3F canvas spanning the entire viewport (z-0).",
+    "Implement an absolute positioned 2D UI overlay (pointer-events-none on wrapper, pointer-events-auto on panels) to allow interacting with both the 3D scene and the floating UI.",
+    "Left Sidebar (Tools): Place Aira's Profile (using aira_avatar), Goal Selector (Shadcn Select), and Object Spawner (grid of Buttons to spawn box, ball, ramp, light).",
+    "Right Sidebar (Telemetry & Settings): Show Live Telemetry (using mono font for State, XYZ Position, XYZ Velocity) and Sliders for Speed/Balance (Shadcn Slider).",
+    "Aira Character: Implement a basic humanoid structure (ragdoll-like) in Rapier using interconnected RigidBodies and joints (spherical/hinge) to simulate procedural IK movement.",
+    "Goals system: Update Aira's target coordinates in zustand store based on the selected goal and position of spawned objects.",
+    "Persistence: Store attempt counters, successes, falls, and settings in localStorage.",
+    "Styling: Follow Archetype 4 (Swiss & High-Contrast). Use stark dark backgrounds with crisp 1px borders, high-contrast text, Signal Red for falls, Klein Blue for UI accents, and Green for successful goals.",
+    "Ensure all interactive elements have data-testid attributes.",
+    "Keep standard HTML inputs out of the design, use Shadcn primitives heavily customized to match the Swiss Dark theme."
+  ]
+}
