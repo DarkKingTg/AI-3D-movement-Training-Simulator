@@ -16,17 +16,23 @@ Build a simulation application for **Aira** — a female child humanoid — to l
 - **State**: `zustand` store + localStorage hydration
 - **Backend**: FastAPI (template only)
 
-## Implemented Features (v1.4)
+## Implemented Features (v1.5)
 ### Core simulation
 - 3D viewport with R3F + Rapier physics; orbit/follow/top camera modes
-- **Dual ragdoll modes**:
-  - **Kinematic** (default): single capsule physics body with articulated cosmetic skeleton — runs motion library + curriculum
-  - **Physics**: true multi-body ragdoll — 12 dynamic Rapier bodies connected by **spherical** (waist, neck, shoulders, hips) and **revolute** (elbows, knees) joints; self-collision filtered via `interactionGroups([1],[0])`
-  - **Upright lock toggle**: locks pelvis Y translation + X/Z rotations so she stays standing while limbs hang from joints; un-lock for full ragdoll collapse
+- **Dual ragdoll modes**: Kinematic (cosmetic skeleton) ↔ Physics (true multi-body — 11 rigid bodies + spherical/revolute joints + self-collision filtering)
+- **Upright lock toggle**: pelvis Y/rotation lock for stable walking, unlock for ragdoll collapse
 - AiController: velocity-based locomotion driving pelvis toward goal target
 - 6 goals: Idle / Walk to Target / Follow Light / Follow Object / Lift Object / Jump Obstacle
-- Spawnable objects: Box · Ramp · Ball · Target · Light · Lift-Crate (with HTML labels)
-- Save/Wipe localStorage, Pause/Reset/Reset-Aira (handles both ragdoll modes)
+- Spawnable objects: Box · Ramp · Ball · Target · Light · Lift-Crate · **Stairs** (procedural 4-step staircase)
+- Save/Wipe localStorage, Pause/Reset/Reset-Aira
+
+### Falls Compilation (NEW v1.5)
+- **Auto-recording**: every frame at 10 Hz, snapshots all 11 body transforms into a rolling 3-second pre-fall buffer
+- **Fall detection**: pelvis y < 0.4 m OR any contact force > 40 N
+- **Post-fall capture**: continues capturing 3 more seconds, then bundles the pre+post buffer into a named clip with metadata (`peakForce`, `durationSec`, `frameCount`, `level`)
+- **FallReplayer**: in-canvas component that warps live bodies to recorded transforms each frame → slow-mo playback (0.1×–1.0×)
+- **FallsPanel UI**: lists clips with one-click slow-mo replay, share (clipboard summary), download (JSON file), delete; recorder on/off toggle, wipe-all button
+- Persisted across reloads in localStorage
 
 ### Articulation & Senses (AI Input)
 - **Articulated skeleton**: spine, head, l/r shoulders, elbows, wrists, fingers, hips, knees as nested groups (kinematic mode) **or** 12 dynamic Rapier bodies + 9 joints (physics mode)

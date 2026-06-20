@@ -1,7 +1,7 @@
 import { useSimStore, GOALS, GOAL_LABELS } from "@/store/simStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Box, MountainSnow, Circle, Flag, Sun, Package, Trash2, Sparkles } from "lucide-react";
+import { Box, MountainSnow, Circle, Flag, Sun, Package, Trash2, Sparkles, ChevronsUp } from "lucide-react";
 import { SIM } from "@/constants/testIds";
 import CurriculumPanel from "@/components/sim/CurriculumPanel";
 import { toast } from "sonner";
@@ -107,6 +107,7 @@ export default function LeftSidebar() {
           <SpawnBtn icon={Flag} label="Target" type="target" testid={SIM.spawnTarget} onSpawn={spawn} />
           <SpawnBtn icon={Sun} label="Light" type="light" testid={SIM.spawnLight} onSpawn={spawn} />
           <SpawnBtn icon={Package} label="Crate" type="liftBox" testid={SIM.spawnLiftBox} onSpawn={spawn} />
+          <SpawnBtn icon={ChevronsUp} label="Stairs" type="stairs" testid={SIM.spawnStairs} onSpawn={spawn} />
         </div>
         <button
           data-testid={SIM.clearObjectsBtn}

@@ -12,6 +12,8 @@ import MotionPlayer from "@/sim/MotionPlayer";
 import VisionCamera from "@/sim/VisionCamera";
 import ContactSensor from "@/sim/ContactSensor";
 import CurriculumDirector from "@/sim/CurriculumDirector";
+import FallRecorder from "@/sim/FallRecorder";
+import FallReplayer from "@/sim/FallReplayer";
 import { useSimStore } from "@/store/simStore";
 import { SIM } from "@/constants/testIds";
 
@@ -62,6 +64,8 @@ export default function SimulationCanvas() {
           <JointDriver airaRef={airaRef} />
           <ContactSensor airaRef={airaRef} />
           <CurriculumDirector airaRef={airaRef} />
+          <FallRecorder airaRef={airaRef} />
+          <FallReplayer airaRef={airaRef} />
           {objects.map((o) => (
             <SpawnedObject key={o.id} object={o} />
           ))}

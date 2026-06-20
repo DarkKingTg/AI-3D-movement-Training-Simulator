@@ -6,6 +6,7 @@ import TopBar from "@/components/sim/TopBar";
 import SensorPanel from "@/components/sim/SensorPanel";
 import JointPanel from "@/components/sim/JointPanel";
 import TeachPanel from "@/components/sim/TeachPanel";
+import FallsPanel from "@/components/sim/FallsPanel";
 import { Toaster } from "@/components/ui/sonner";
 import { useSimStore } from "@/store/simStore";
 
@@ -59,10 +60,11 @@ export default function Simulation() {
         }}
       />
 
-      {/* Floating sensor + manual-pose + teach panels */}
+      {/* Floating sensor + manual-pose + teach + falls panels */}
       <SensorPanel />
       <JointPanel />
       <TeachPanel />
+      <FallsPanel />
     </div>
   );
 }

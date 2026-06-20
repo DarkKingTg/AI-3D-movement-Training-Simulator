@@ -17,6 +17,7 @@ export const SIM = {
   spawnTarget: "spawn-target-btn",
   spawnLight: "spawn-light-btn",
   spawnLiftBox: "spawn-liftbox-btn",
+  spawnStairs: "spawn-stairs-btn",
   clearObjectsBtn: "clear-objects-btn",
   // Right sidebar
   rightSidebar: "right-sidebar",

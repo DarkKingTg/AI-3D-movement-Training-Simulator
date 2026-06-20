@@ -78,8 +78,27 @@ const initial = {
 
   // --- Ragdoll mode toggle ---
   ragdoll: {
-    mode: "kinematic", // "kinematic" | "physics"
-    pelvisLocked: true, // when physics: keep upright; toggle off for full collapse
+    mode: "kinematic",
+    pelvisLocked: true,
+  },
+
+  // --- Falls compilation / replay ---
+  recorder: {
+    enabled: true,
+    recordingPostFall: false,    // true after a fall is detected, while we capture 3 more seconds
+    postFallEndsAt: 0,
+    peakForce: 0,
+    levelHint: null,             // current level name for clip metadata
+  },
+  fallsBuffer: [],               // rolling pre-fall snapshots
+  fallsClips: [],                // saved clips
+  fallsPanelOpen: false,
+  playback: {
+    clipId: null,
+    speed: 0.5,
+    frameIndex: 0,
+    playing: false,
+    startedAt: 0,
   },
 };
 
@@ -114,6 +133,10 @@ function persist(state) {
         history: state.curriculum.history.slice(0, 50),
         totalLapsCompleted: state.curriculum.totalLapsCompleted,
       },
+      ragdoll: state.ragdoll,
+      recorder: { enabled: state.recorder.enabled },
+      fallsClips: state.fallsClips,
+      fallsPanelOpen: state.fallsPanelOpen,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   } catch {}
@@ -270,5 +293,40 @@ export const useSimStore = create((set, get) => {
       set((s) => ({ ragdoll: { ...s.ragdoll, pelvisLocked: locked } }));
       persist(get());
     },
+
+    // --- Falls recorder ---
+    toggleRecorder: () => {
+      set((s) => ({ recorder: { ...s.recorder, enabled: !s.recorder.enabled } }));
+      persist(get());
+    },
+    appendBuffer: (frame) =>
+      set((s) => ({ fallsBuffer: [...s.fallsBuffer, frame].slice(-30) })),    // keep ~3s pre-fall @10Hz
+    armFall: (peakForce, levelHint) =>
+      set((s) => ({
+        recorder: { ...s.recorder, recordingPostFall: true, postFallEndsAt: performance.now() + 3000, peakForce, levelHint },
+      })),
+    finalizeClip: (clip) =>
+      set((s) => {
+        const clips = [clip, ...s.fallsClips].slice(0, 8);
+        return {
+          fallsClips: clips,
+          fallsBuffer: [],
+          recorder: { ...s.recorder, recordingPostFall: false, postFallEndsAt: 0, peakForce: 0 },
+        };
+      }),
+    removeClip: (id) => set((s) => ({ fallsClips: s.fallsClips.filter((c) => c.id !== id) })),
+    clearClips: () => set({ fallsClips: [] }),
+    toggleFallsPanel: () => {
+      set((s) => ({ fallsPanelOpen: !s.fallsPanelOpen }));
+      persist(get());
+    },
+
+    // --- Playback ---
+    playClip: (clipId, speed = 0.5) =>
+      set({ playback: { clipId, speed, frameIndex: 0, playing: true, startedAt: performance.now() } }),
+    stopPlayback: () =>
+      set((s) => ({ playback: { ...s.playback, playing: false, frameIndex: 0 } })),
+    setPlaybackSpeed: (speed) => set((s) => ({ playback: { ...s.playback, speed } })),
+    setPlaybackFrame: (frameIndex) => set((s) => ({ playback: { ...s.playback, frameIndex } })),
   };
 });

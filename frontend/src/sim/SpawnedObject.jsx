@@ -98,6 +98,27 @@ export default function SpawnedObject({ object }) {
     );
   }
 
+  if (type === "stairs") {
+    // A 4-step procedural staircase along +Z, each step 0.4m wide, 0.2m tall, 0.4m deep
+    const steps = 4;
+    const stepW = 1.2;
+    const stepH = 0.16;
+    const stepD = 0.45;
+    return (
+      <group position={position}>
+        {Array.from({ length: steps }).map((_, i) => (
+          <RigidBody key={i} type="fixed" colliders="cuboid" position={[0, stepH / 2 + i * stepH, i * stepD]}>
+            <mesh castShadow receiveShadow>
+              <boxGeometry args={[stepW, stepH, stepD]} />
+              <meshStandardMaterial color="#3a3a3a" roughness={0.9} />
+            </mesh>
+          </RigidBody>
+        ))}
+        <Label position={[0, steps * stepH + 0.3, 0]} text="STAIRS" color="#888888" testid={`label-stairs-${id}`} />
+      </group>
+    );
+  }
+
   if (type === "liftBox") {
     return (
       <RigidBody ref={bodyRef} colliders="cuboid" position={position} mass={0.4} linearDamping={0.5} angularDamping={0.4} restitution={0.05}>
