@@ -6,6 +6,11 @@ import AiraRagdoll from "@/sim/AiraRagdoll";
 import AiController from "@/sim/AiController";
 import CameraRig from "@/sim/CameraRig";
 import SpawnedObject from "@/sim/SpawnedObject";
+import JointDriver from "@/sim/JointDriver";
+import MotionPlayer from "@/sim/MotionPlayer";
+import VisionCamera from "@/sim/VisionCamera";
+import ContactSensor from "@/sim/ContactSensor";
+import CurriculumDirector from "@/sim/CurriculumDirector";
 import { useSimStore } from "@/store/simStore";
 import { SIM } from "@/constants/testIds";
 
@@ -37,10 +42,16 @@ export default function SimulationCanvas() {
           <Ground />
           <AiraRagdoll ref={airaRef} spawnPosition={[0, 1.3, 0]} />
           <AiController airaRef={airaRef} />
+          <MotionPlayer />
+          <JointDriver airaRef={airaRef} />
+          <ContactSensor airaRef={airaRef} />
+          <CurriculumDirector airaRef={airaRef} />
           {objects.map((o) => (
             <SpawnedObject key={o.id} object={o} />
           ))}
         </Physics>
+
+        <VisionCamera airaRef={airaRef} />
 
         <CameraRig airaRef={airaRef} />
       </Canvas>

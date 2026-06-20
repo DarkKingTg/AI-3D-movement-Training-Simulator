@@ -3,6 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Box, MountainSnow, Circle, Flag, Sun, Package, Trash2, Sparkles } from "lucide-react";
 import { SIM } from "@/constants/testIds";
+import CurriculumPanel from "@/components/sim/CurriculumPanel";
 import { toast } from "sonner";
 
 function SpawnBtn({ icon: Icon, label, type, testid, onSpawn }) {
@@ -63,6 +64,9 @@ export default function LeftSidebar() {
           <div className="text-[10px] font-mono text-zinc-500">child humanoid · v1.0</div>
         </div>
       </div>
+
+      {/* Curriculum mission panel */}
+      <CurriculumPanel />
 
       {/* Goal selector */}
       <div className="flex flex-col gap-2">
