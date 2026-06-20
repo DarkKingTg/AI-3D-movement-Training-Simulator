@@ -1,56 +1,12 @@
-import { useEffect } from "react";
-import { useSimStore } from "@/store/simStore";
-
 /**
- * ContactSensor — listens for collision events on Aira's body and
- * pushes each contact (with estimated force) to senses.contacts.
+ * ContactSensor — now a no-op.
  *
- * Uses Rapier's onCollisionEnter via the RigidBody. We attach to the
- * pelvis body since it's the main physics body. The other limbs are
- * cosmetic, so all real contacts flow through the core capsule.
+ * In v1, contacts were sampled by polling Rapier's contact pairs. That has
+ * been replaced by per-body `onContactForce` callbacks in AiraRagdollPhysics
+ * which fire precise per-collision impact magnitudes directly into the store.
+ * This component is kept as an empty hook to preserve existing wiring in
+ * SimulationCanvas without re-flowing prop/component lists.
  */
-export default function ContactSensor({ airaRef }) {
-  const addContact = useSimStore((s) => s.addContact);
-
-  useEffect(() => {
-    if (!airaRef.current) return;
-    const rb = airaRef.current.pelvis?.current;
-    if (!rb) return;
-
-    // Rapier RigidBody from r3f has userData; bind a global JS listener via the rb
-    // We poll contact pairs each ~250ms using the physics world.
-    let raf;
-    let lastSeen = new Set();
-    const tick = () => {
-      try {
-        const world = rb.world?.();
-        const handle = rb.handle;
-        if (world && handle !== undefined) {
-          const newSeen = new Set();
-          world.contactPairsWith(rb.collider(0), (other) => {
-            const id = other.handle;
-            newSeen.add(id);
-            if (lastSeen.has(id)) return;
-            // Estimate impulse force magnitude from current linvel difference
-            const lv = rb.linvel();
-            const force = Math.hypot(lv.x, lv.y, lv.z) * 4; // mass=4
-            const parent = other.parent?.();
-            const otherName = parent?.userData?.name || parent?.name || "world";
-            addContact({
-              part: "core",
-              otherName,
-              force,
-              t: Date.now(),
-            });
-          });
-          lastSeen = newSeen;
-        }
-      } catch {}
-      raf = setTimeout(tick, 250);
-    };
-    raf = setTimeout(tick, 500);
-    return () => clearTimeout(raf);
-  }, [airaRef, addContact]);
-
+export default function ContactSensor() {
   return null;
 }

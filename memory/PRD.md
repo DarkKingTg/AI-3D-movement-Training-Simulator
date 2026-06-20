@@ -29,15 +29,17 @@ Build a simulation application for **Aira** — a female child humanoid — to l
 - Save/Wipe localStorage, Pause/Reset/Reset-Aira (handles both ragdoll modes)
 
 ### Articulation & Senses (AI Input)
-- **Articulated skeleton**: spine, head, l/r shoulders, elbows, wrists, fingers, hips, knees as nested groups
+- **Articulated skeleton**: spine, head, l/r shoulders, elbows, wrists, fingers, hips, knees as nested groups (kinematic mode) **or** 12 dynamic Rapier bodies + 9 joints (physics mode)
 - **Anatomical joint limits** (anatomy.js): clamped at human RoM (e.g. elbow 0–145°, neck ±70° yaw)
-- **JointDriver**: clamps + applies commanded angles every frame; writes back applied angles as proprioception
+- **JointDriver** (dual-mode):
+  - Kinematic: clamps + writes Euler rotations to bone groups
+  - Physics: drives **revolute knees & elbows** via Rapier `configureMotorPosition`; drives **spherical shoulders/hips/neck/waist** via clamped PD torque impulses on body B toward target relative orientation
 - **VisionCamera**: renders Aira's first-person eye-view at 96×72×100° FOV into a WebGL RenderTarget, reads pixels into Uint8Array (~6 Hz)
 - **IMU**: head & pelvis Yaw/Pitch/Roll, head linear acceleration (~10 Hz)
 - **Visible-object raycast**: lists objects inside FOV with distance & angular offset
-- **ContactSensor**: collision pairs against the body collider (force estimate)
+- **Per-body contact-force events**: every body part registers an `onContactForce` callback that pushes precise force magnitudes (e.g. `TORSO · world · F=64.8N`) into the senses store — replaced the previous polling estimate
 - **`window.airaAiInput`**: live JS bridge exposing `senses`, `jointsActual`, `stats` for external AI consumption
-- **SensorPanel**: floating bottom-right panel showing live vision thumbnail, IMU, proprioception (14 joints), visible objects, contacts
+- **SensorPanel**: floating bottom-right panel showing live vision thumbnail, IMU, **12-joint** proprioception, visible objects, per-body contacts
 - **JointPanel** (Manual Posing): bottom-center slider panel — every joint axis with anatomical clamps
 
 ### Teach Aira (motor learning)

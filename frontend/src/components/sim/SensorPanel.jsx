@@ -41,13 +41,17 @@ export default function SensorPanel() {
   // Pick a few proprioception highlights
   const jointEntries = [
     ["head", jointsActual.head],
+    ["spine", jointsActual.spine],
     ["lShoulder", jointsActual.lShoulder],
     ["rShoulder", jointsActual.rShoulder],
     ["lElbow", jointsActual.lElbow],
     ["rElbow", jointsActual.rElbow],
+    ["lHip", jointsActual.lHip],
+    ["rHip", jointsActual.rHip],
+    ["lKnee", jointsActual.lKnee],
+    ["rKnee", jointsActual.rKnee],
     ["lFingers", jointsActual.lFingers],
     ["rFingers", jointsActual.rFingers],
-    ["spine", jointsActual.spine],
   ].filter(([, v]) => v);
 
   return (
