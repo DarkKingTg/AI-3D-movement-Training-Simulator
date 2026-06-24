@@ -37,15 +37,18 @@ const _vec3 = new THREE.Vector3();
 
 export default function JointDriver({ airaRef }) {
   const joints = useSimStore((s) => s.joints);
+  const motorGains = useSimStore((s) => s.motorGains);
+  const broken = useSimStore((s) => s.breakState.broken);
   const updateProprioception = useSimStore((s) => s.updateProprioception);
   const ragdollMode = useSimStore((s) => s.ragdoll.mode);
   const lastWriteRef = useRef(0);
 
   useFrame(() => {
     if (!airaRef.current) return;
+    if (broken) return;
 
     if (ragdollMode === "physics") {
-      driverPhysics(airaRef, joints);
+      driverPhysics(airaRef, joints, motorGains);
     } else {
       driveKinematic(airaRef, joints);
     }
@@ -98,15 +101,15 @@ function driveKinematic(airaRef, joints) {
 // ---------------------------------------------------------------------------
 // Physics mode — drive Rapier joint motors
 // ---------------------------------------------------------------------------
-function driverPhysics(airaRef, joints) {
+function driverPhysics(airaRef, joints, motorGains) {
   const J = airaRef.current.joints;
   if (!J) return;
 
   // Revolute joints with motors
-  driveRevolute(J.lElbow.current, joints.lElbow?.bend);
-  driveRevolute(J.rElbow.current, joints.rElbow?.bend);
-  driveRevolute(J.lKnee.current, -(joints.lKnee?.bend || 0));
-  driveRevolute(J.rKnee.current, -(joints.rKnee?.bend || 0));
+  driveRevolute(J.lElbow.current, joints.lElbow?.bend, motorGains);
+  driveRevolute(J.rElbow.current, joints.rElbow?.bend, motorGains);
+  driveRevolute(J.lKnee.current, -(joints.lKnee?.bend || 0), motorGains);
+  driveRevolute(J.rKnee.current, -(joints.rKnee?.bend || 0), motorGains);
 
   // Spherical joints — PD controller on bodies
   // Shoulders
@@ -115,13 +118,13 @@ function driverPhysics(airaRef, joints) {
     y: joints.lShoulder?.roll || 0,
     z: joints.lShoulder?.yaw || 0,
   });
-  driveSpherical(airaRef.current.allParts[1]?.current, airaRef.current.allParts[3]?.current, lShoulderTarget);
+  driveSpherical(airaRef.current.allParts[1]?.current, airaRef.current.allParts[3]?.current, lShoulderTarget, motorGains);
   const rShoulderTarget = sphericalTargetQuat({
     x: -(joints.rShoulder?.pitch || 0),
     y: joints.rShoulder?.roll || 0,
     z: -(joints.rShoulder?.yaw || 0),
   });
-  driveSpherical(airaRef.current.allParts[1]?.current, airaRef.current.allParts[4]?.current, rShoulderTarget);
+  driveSpherical(airaRef.current.allParts[1]?.current, airaRef.current.allParts[4]?.current, rShoulderTarget, motorGains);
 
   // Hips
   const lHipTarget = sphericalTargetQuat({
@@ -129,13 +132,13 @@ function driverPhysics(airaRef, joints) {
     y: joints.lHip?.yaw || 0,
     z: joints.lHip?.roll || 0,
   });
-  driveSpherical(airaRef.current.allParts[0]?.current, airaRef.current.allParts[7]?.current, lHipTarget);
+  driveSpherical(airaRef.current.allParts[0]?.current, airaRef.current.allParts[7]?.current, lHipTarget, motorGains);
   const rHipTarget = sphericalTargetQuat({
     x: joints.rHip?.pitch || 0,
     y: -(joints.rHip?.yaw || 0),
     z: -(joints.rHip?.roll || 0),
   });
-  driveSpherical(airaRef.current.allParts[0]?.current, airaRef.current.allParts[8]?.current, rHipTarget);
+  driveSpherical(airaRef.current.allParts[0]?.current, airaRef.current.allParts[8]?.current, rHipTarget, motorGains);
 
   // Head (spine + neck combined applied to head body via torso)
   const headTarget = sphericalTargetQuat({
@@ -143,14 +146,18 @@ function driverPhysics(airaRef, joints) {
     y: joints.head?.yaw || 0,
     z: joints.head?.roll || 0,
   });
-  driveSpherical(airaRef.current.allParts[1]?.current, airaRef.current.allParts[2]?.current, headTarget);
+  driveSpherical(airaRef.current.allParts[1]?.current, airaRef.current.allParts[2]?.current, headTarget, motorGains);
 }
 
-function driveRevolute(joint, targetDeg) {
+function driveRevolute(joint, targetDeg, motorGains) {
   if (!joint || targetDeg === undefined || targetDeg === null) return;
   if (!Number.isFinite(targetDeg)) return;
   try {
-    joint.configureMotorPosition(toRad(targetDeg), MOTOR_STIFFNESS_REV, MOTOR_DAMPING_REV);
+    joint.configureMotorPosition(
+      toRad(targetDeg),
+      motorGains?.stiffness ?? MOTOR_STIFFNESS_REV,
+      motorGains?.damping ?? MOTOR_DAMPING_REV
+    );
   } catch {}
 }
 
@@ -171,7 +178,7 @@ function sphericalTargetQuat({ x = 0, y = 0, z = 0 }) {
  * relative to bodyA approaches `targetLocalQuat`. Conservative gains + a
  * hard torque clamp prevent the rapier solver from going unreachable.
  */
-function driveSpherical(bodyA, bodyB, targetLocalQuat) {
+function driveSpherical(bodyA, bodyB, targetLocalQuat, motorGains) {
   if (!bodyA || !bodyB || !targetLocalQuat) return;
   try {
     if (typeof bodyB.applyTorqueImpulse !== "function") return;
@@ -196,18 +203,21 @@ function driveSpherical(bodyA, bodyB, targetLocalQuat) {
     const ay = (_qError.y / sinHalf) * sign;
     const az = (_qError.z / sinHalf) * sign;
 
-    _vec3.set(ax * angle * SPHERE_TORQUE_K, ay * angle * SPHERE_TORQUE_K, az * angle * SPHERE_TORQUE_K);
+    const torqueK = motorGains?.sphereTorqueK ?? SPHERE_TORQUE_K;
+    const torqueD = motorGains?.sphereTorqueD ?? SPHERE_TORQUE_D;
+    const torqueClamp = motorGains?.torqueLimit ?? TORQUE_CLAMP;
+    _vec3.set(ax * angle * torqueK, ay * angle * torqueK, az * angle * torqueK);
     _vec3.applyQuaternion(_qParent);
 
     const av = bodyB.angvel();
-    let tx = _vec3.x - av.x * SPHERE_TORQUE_D;
-    let ty = _vec3.y - av.y * SPHERE_TORQUE_D;
-    let tz = _vec3.z - av.z * SPHERE_TORQUE_D;
+    let tx = _vec3.x - av.x * torqueD;
+    let ty = _vec3.y - av.y * torqueD;
+    let tz = _vec3.z - av.z * torqueD;
 
     // Hard clamp per axis
-    tx = THREE.MathUtils.clamp(tx, -TORQUE_CLAMP, TORQUE_CLAMP);
-    ty = THREE.MathUtils.clamp(ty, -TORQUE_CLAMP, TORQUE_CLAMP);
-    tz = THREE.MathUtils.clamp(tz, -TORQUE_CLAMP, TORQUE_CLAMP);
+    tx = THREE.MathUtils.clamp(tx, -torqueClamp, torqueClamp);
+    ty = THREE.MathUtils.clamp(ty, -torqueClamp, torqueClamp);
+    tz = THREE.MathUtils.clamp(tz, -torqueClamp, torqueClamp);
     if (!Number.isFinite(tx) || !Number.isFinite(ty) || !Number.isFinite(tz)) return;
 
     bodyB.applyTorqueImpulse({ x: tx, y: ty, z: tz }, true);

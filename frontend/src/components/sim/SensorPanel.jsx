@@ -13,7 +13,7 @@ import { useDraggable } from "@/hooks/useDraggable";
  *   - Visible objects in FOV (raycast list)
  *   - Distance to current target
  *
- * Also exposes `window.airaAiInput` for external AI code to consume.
+ * Also exposes a legacy compact feed for external AI code to consume.
  */
 export default function SensorPanel() {
   const open = useSimStore((s) => s.sensorPanelOpen);
@@ -27,7 +27,9 @@ export default function SensorPanel() {
 
   // Expose to window for external consumers
   if (typeof window !== "undefined") {
-    window.airaAiInput = { senses, jointsActual, stats };
+    const legacyFeed = { senses, jointsActual, stats };
+    window.airaAiInputLegacy = legacyFeed;
+    if (!window.airaTrainingBridge) window.airaAiInput = legacyFeed;
   }
 
   if (!open) {
@@ -93,7 +95,7 @@ export default function SensorPanel() {
         </div>
         <VisionThumbnail width={192} height={144} />
         <div className="mt-1 text-[9px] font-mono text-zinc-500">
-          frame_id: {senses.visionUpdatedAt} · rgb8 buffer · readable via window.airaAiInput.senses.visionData
+          frame_id: {senses.visionUpdatedAt} · rgb8 buffer · readable via window.airaAiInputLegacy.senses.visionData
         </div>
       </section>
 

@@ -1,7 +1,6 @@
 from fastapi import FastAPI, APIRouter
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
@@ -10,14 +9,25 @@ from typing import List
 import uuid
 from datetime import datetime, timezone
 
+try:
+    from motor.motor_asyncio import AsyncIOMotorClient
+except ImportError:
+    AsyncIOMotorClient = None
+
+try:
+    from movement_training import router as movement_router
+except ImportError:
+    from .movement_training import router as movement_router
+
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# MongoDB connection is optional for the simulator/movement service.
+mongo_url = os.environ.get('MONGO_URL')
+db_name = os.environ.get('DB_NAME')
+client = AsyncIOMotorClient(mongo_url) if AsyncIOMotorClient and mongo_url and db_name else None
+db = client[db_name] if client else None
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -46,6 +56,8 @@ async def root():
 async def create_status_check(input: StatusCheckCreate):
     status_dict = input.model_dump()
     status_obj = StatusCheck(**status_dict)
+    if db is None:
+        return status_obj
     
     # Convert to dict and serialize datetime to ISO string for MongoDB
     doc = status_obj.model_dump()
@@ -56,6 +68,9 @@ async def create_status_check(input: StatusCheckCreate):
 
 @api_router.get("/status", response_model=List[StatusCheck])
 async def get_status_checks():
+    if db is None:
+        return []
+
     # Exclude MongoDB's _id field from the query results
     status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
     
@@ -65,6 +80,8 @@ async def get_status_checks():
             check['timestamp'] = datetime.fromisoformat(check['timestamp'])
     
     return status_checks
+
+api_router.include_router(movement_router)
 
 # Include the router in the main app
 app.include_router(api_router)
@@ -86,4 +103,5 @@ logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    client.close()
+    if client:
+        client.close()

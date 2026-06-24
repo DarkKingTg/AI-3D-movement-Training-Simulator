@@ -1,6 +1,7 @@
 import { useRef, useEffect } from "react";
 import { RigidBody } from "@react-three/rapier";
 import { Html } from "@react-three/drei";
+import { useFrame } from "@react-three/fiber";
 import { useSimStore } from "@/store/simStore";
 
 /**
@@ -9,19 +10,57 @@ import { useSimStore } from "@/store/simStore";
  */
 export default function SpawnedObject({ object }) {
   const bodyRef = useRef(null);
-  const removeObject = useSimStore((s) => s.removeObject);
+  const updateObjectPose = useSimStore((s) => s.updateObjectPose);
+  const lastPoseRef = useRef(0);
 
-  // Lift event: if this is a liftBox and Aira tries to lift, apply upward impulse
+  // Manipulation events: Aira's motor policy can push, pull, lift, or carry dynamic props.
   useEffect(() => {
-    if (object.type !== "liftBox") return;
-    const onLift = (e) => {
-      if (e.detail?.targetId === object.id && bodyRef.current) {
-        bodyRef.current.applyImpulse({ x: 0, y: 0.25, z: 0 }, true);
-      }
+    if (!["liftBox", "ball"].includes(object.type)) return;
+    const applyManipulation = (type, detail = {}) => {
+      if (detail.targetId != null && detail.targetId !== object.id) return;
+      const body = bodyRef.current;
+      if (!body) return;
+      const force = Math.max(0, Math.min(60, Number(detail.force ?? (type === "lift" ? 12 : 8))));
+      const dir = Array.isArray(detail.direction) ? detail.direction : defaultDirection(type);
+      const scale = 0.018;
+      body.applyImpulse({
+        x: (dir[0] || 0) * force * scale,
+        y: (dir[1] || 0) * force * scale,
+        z: (dir[2] || 0) * force * scale,
+      }, true);
     };
+    const onPush = (e) => applyManipulation("push", e.detail);
+    const onPull = (e) => applyManipulation("pull", e.detail);
+    const onLift = (e) => applyManipulation("lift", e.detail);
+    const onCarry = (e) => applyManipulation("carry", e.detail);
+    window.addEventListener("aira:push", onPush);
+    window.addEventListener("aira:pull", onPull);
     window.addEventListener("aira:lift", onLift);
-    return () => window.removeEventListener("aira:lift", onLift);
+    window.addEventListener("aira:carry", onCarry);
+    return () => {
+      window.removeEventListener("aira:push", onPush);
+      window.removeEventListener("aira:pull", onPull);
+      window.removeEventListener("aira:lift", onLift);
+      window.removeEventListener("aira:carry", onCarry);
+    };
   }, [object.id, object.type]);
+
+  useFrame(() => {
+    const body = bodyRef.current;
+    if (!body || typeof body.translation !== "function") return;
+    const now = performance.now();
+    if (now - lastPoseRef.current < 150) return;
+    lastPoseRef.current = now;
+    try {
+      const t = body.translation();
+      const lv = typeof body.linvel === "function" ? body.linvel() : { x: 0, y: 0, z: 0 };
+      updateObjectPose(object.id, {
+        type: object.type,
+        position: [round(t.x), round(t.y), round(t.z)],
+        velocity: [round(lv.x), round(lv.y), round(lv.z)],
+      });
+    } catch {}
+  });
 
   const { type, position, id } = object;
   const labelOffset = [0, 1.0, 0];
@@ -157,4 +196,14 @@ function Label({ position, text, color, testid }) {
       </div>
     </Html>
   );
+}
+
+function defaultDirection(type) {
+  if (type === "lift" || type === "carry") return [0, 1, 0];
+  if (type === "pull") return [0, 0, -1];
+  return [0, 0, 1];
+}
+
+function round(n) {
+  return Number(Number(n).toFixed(3));
 }

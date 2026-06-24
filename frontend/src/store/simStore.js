@@ -21,6 +21,9 @@ export const GOAL_LABELS = {
 };
 
 import { DEFAULT_JOINTS } from "@/sim/anatomy";
+import { DEFAULT_MOTOR_GAINS, validateMotorAction } from "@/sim/aiTrainingSchema";
+import { summarizeEpisodeFailure } from "@/sim/breakSystem";
+import { defaultAiraInnerState } from "@/sim/airaInnerState";
 
 const initial = {
   goal: GOALS.IDLE,
@@ -30,6 +33,7 @@ const initial = {
   balance: 0.7,
   jumpPower: 5.5,
   objects: [],
+  objectPoses: {},
   airaState: { pos: [0, 1, 0], vel: [0, 0, 0], status: "idle" },
   stats: { attempts: 0, successes: 0, falls: 0 },
   nextId: 1,
@@ -38,6 +42,7 @@ const initial = {
   // --- NEW: articulation ---
   joints: structuredClone(DEFAULT_JOINTS), // commanded joint angles (deg)
   jointsActual: structuredClone(DEFAULT_JOINTS), // proprioception (clamped/applied)
+  motorGains: { ...DEFAULT_MOTOR_GAINS },
 
   // --- NEW: senses (read-only, updated each frame by sensors) ---
   senses: {
@@ -106,6 +111,31 @@ const initial = {
     enabled: true,
     levels: {},
   },
+  breakState: {
+    broken: false,
+    brokenParts: [],
+    lastBreak: null,
+    episodeEnd: null,
+  },
+  movementLessons: [],
+
+  // --- Movement training bridge ---
+  trainingBridge: {
+    enabled: true,
+    mode: "visible",
+    skill: "stand",
+    wsUrl: "ws://localhost:8000/api/movement/ws",
+    connected: false,
+    lastError: null,
+    tick: 0,
+    episode: 0,
+    rollouts: 0,
+    lastReward: 0,
+    rewardBreakdown: {},
+    lastObservationAt: 0,
+    lastActionAt: 0,
+    lastEpisodeEnd: null,
+  },
 
   // --- GLB Avatar ---
   glbAvatar: {
@@ -115,6 +145,8 @@ const initial = {
     scale: 1.0,
     bones: [],
     mapping: {}, // glbBoneName -> airaSlot (e.g., "head", "lShoulder")
+    proxyRigActive: false,
+    proxyRigReason: null,
     driveSkeleton: false,    // when true, GLB anchors to pelvis & bones follow Aira's rotations
     hideProcedural: false,   // when true, hide the procedural Aira meshes (physics still simulating)
   },
@@ -122,6 +154,8 @@ const initial = {
   // --- AI Thinking / Pipeline visualization ---
   aiThinkingPanelOpen: false,
   pipelinePanelOpen: false,
+  airaInnerPanelOpen: false,
+  airaInnerState: defaultAiraInnerState(),
   aiThoughts: [], // [{ id, kind: 'sense'|'decide'|'act'|'learn'|'reflex', text, t }]
   // pipelineStages: each stage has lastActiveAt timestamp; UI computes "active" pulse if recent
   pipelineStages: {
@@ -158,6 +192,7 @@ function persist(state) {
       nextId: state.nextId,
       cameraMode: state.cameraMode,
       joints: state.joints,
+      motorGains: state.motorGains,
       jointPanelOpen: state.jointPanelOpen,
       sensorPanelOpen: state.sensorPanelOpen,
       curriculum: {
@@ -172,6 +207,14 @@ function persist(state) {
       fallsClips: state.fallsClips,
       fallsPanelOpen: state.fallsPanelOpen,
       injuries: { enabled: state.injuries.enabled },
+      movementLessons: state.movementLessons.slice(0, 30),
+      airaInnerPanelOpen: state.airaInnerPanelOpen,
+      trainingBridge: {
+        enabled: state.trainingBridge.enabled,
+        mode: state.trainingBridge.mode,
+        skill: state.trainingBridge.skill,
+        wsUrl: state.trainingBridge.wsUrl,
+      },
       aiThinkingPanelOpen: state.aiThinkingPanelOpen,
       pipelinePanelOpen: state.pipelinePanelOpen,
     };
@@ -184,6 +227,18 @@ export const useSimStore = create((set, get) => {
   return {
     ...initial,
     ...(saved || {}),
+    motorGains: { ...initial.motorGains, ...(saved?.motorGains || {}) },
+    trainingBridge: {
+      ...initial.trainingBridge,
+      ...(saved?.trainingBridge || {}),
+      connected: false,
+      lastError: null,
+    },
+    breakState: initial.breakState,
+    objectPoses: {},
+    glbAvatar: { ...initial.glbAvatar, ...(saved?.glbAvatar || {}) },
+    movementLessons: saved?.movementLessons || initial.movementLessons,
+    airaInnerState: initial.airaInnerState,
 
     setGoal: (goal) => {
       set({ goal });
@@ -222,6 +277,13 @@ export const useSimStore = create((set, get) => {
     },
 
     clearObjects: () => { set({ objects: [] }); persist(get()); },
+    updateObjectPose: (id, pose) =>
+      set((s) => ({
+        objectPoses: {
+          ...s.objectPoses,
+          [id]: { ...pose, updatedAt: Date.now() },
+        },
+      })),
 
     updateAiraState: (pos, vel, status) => set({ airaState: { pos, vel, status } }),
 
@@ -373,10 +435,88 @@ export const useSimStore = create((set, get) => {
     },
     updateInjurySnapshot: (levels) =>
       set((s) => ({ injuries: { ...s.injuries, levels } })),
+    recordBreak: (event) => {
+      const cur = get();
+      if (!event || cur.breakState.broken) return null;
+      const lesson = summarizeEpisodeFailure(event, { goal: cur.goal });
+      set((s) => ({
+        breakState: {
+          broken: true,
+          brokenParts: Array.from(new Set([...s.breakState.brokenParts, event.part])),
+          lastBreak: event,
+          episodeEnd: { reason: "broken_body_part", success: false, t: Date.now() },
+        },
+        movementLessons: [lesson, ...s.movementLessons].slice(0, 80),
+      }));
+      get().incrementFall();
+      get().pushThought("learn", lesson.text);
+      persist(get());
+      return lesson;
+    },
+    clearBreakState: () =>
+      set({
+        breakState: { broken: false, brokenParts: [], lastBreak: null, episodeEnd: null },
+      }),
+    recordMovementLesson: (lesson) => {
+      if (!lesson) return;
+      const entry = typeof lesson === "string"
+        ? { id: `lesson-${Date.now()}`, kind: "movement_note", text: lesson, t: Date.now() }
+        : { id: lesson.id || `lesson-${Date.now()}`, t: Date.now(), ...lesson };
+      set((s) => ({ movementLessons: [entry, ...s.movementLessons].slice(0, 80) }));
+      persist(get());
+    },
+
+    // --- Movement training bridge ---
+    setTrainingBridgeEnabled: (enabled) => {
+      set((s) => ({ trainingBridge: { ...s.trainingBridge, enabled } }));
+      persist(get());
+    },
+    setTrainingBridgeMode: (mode) => {
+      set((s) => ({ trainingBridge: { ...s.trainingBridge, mode } }));
+      persist(get());
+    },
+    setTrainingBridgeSkill: (skill) => {
+      set((s) => ({ trainingBridge: { ...s.trainingBridge, skill } }));
+      persist(get());
+    },
+    setTrainingBridgeWsUrl: (wsUrl) => {
+      set((s) => ({ trainingBridge: { ...s.trainingBridge, wsUrl } }));
+      persist(get());
+    },
+    updateTrainingBridge: (patch) =>
+      set((s) => ({ trainingBridge: { ...s.trainingBridge, ...patch } })),
+    advanceTrainingEpisode: (episodeEnd = null) =>
+      set((s) => ({
+        trainingBridge: {
+          ...s.trainingBridge,
+          episode: s.trainingBridge.episode + 1,
+          rollouts: s.trainingBridge.rollouts + 1,
+          lastEpisodeEnd: episodeEnd || s.trainingBridge.lastEpisodeEnd,
+        },
+        breakState: { broken: false, brokenParts: [], lastBreak: null, episodeEnd: null },
+        senses: { ...s.senses, contacts: [] },
+        resetSignal: s.resetSignal + 1,
+      })),
+    setMotorGains: (gains) =>
+      set((s) => ({ motorGains: { ...s.motorGains, ...gains } })),
+    applyMotorAction: (action) => {
+      const cur = get();
+      const validated = validateMotorAction(action, cur.joints, cur.motorGains);
+      set({
+        joints: validated.joints,
+        motorGains: validated.gains,
+        trainingBridge: {
+          ...cur.trainingBridge,
+          lastActionAt: Date.now(),
+          lastError: validated.warnings?.[0] || cur.trainingBridge.lastError,
+        },
+      });
+      return validated;
+    },
 
     // --- GLB Avatar ---
     setGlbUrl: (url, filename) =>
-      set((s) => ({ glbAvatar: { ...s.glbAvatar, url, filename, bones: [], mapping: {} } })),
+      set((s) => ({ glbAvatar: { ...s.glbAvatar, url, filename, bones: [], mapping: {}, proxyRigActive: true, proxyRigReason: "waiting_for_bone_scan" } })),
     toggleGlbPreview: () =>
       set((s) => ({ glbAvatar: { ...s.glbAvatar, previewVisible: !s.glbAvatar.previewVisible } })),
     setGlbScale: (scale) =>
@@ -387,17 +527,32 @@ export const useSimStore = create((set, get) => {
       bones.forEach((b) => {
         if (!seedMapping[b.name] && b.guess) seedMapping[b.name] = b.guess;
       });
-      set((s) => ({ glbAvatar: { ...s.glbAvatar, bones, mapping: seedMapping } }));
-    },
-    setGlbMapping: (boneName, slot) =>
+      const mappedCount = Object.values(seedMapping).filter(Boolean).length;
       set((s) => ({
         glbAvatar: {
           ...s.glbAvatar,
-          mapping: { ...s.glbAvatar.mapping, [boneName]: slot === "_none" ? undefined : slot },
+          bones,
+          mapping: seedMapping,
+          proxyRigActive: mappedCount < 4,
+          proxyRigReason: mappedCount < 4 ? "no_humanoid_skeleton_detected" : null,
         },
-      })),
+      }));
+    },
+    setGlbMapping: (boneName, slot) =>
+      set((s) => {
+        const mapping = { ...s.glbAvatar.mapping, [boneName]: slot === "_none" ? undefined : slot };
+        const mappedCount = Object.values(mapping).filter(Boolean).length;
+        return {
+          glbAvatar: {
+            ...s.glbAvatar,
+            mapping,
+            proxyRigActive: mappedCount < 4,
+            proxyRigReason: mappedCount < 4 ? "no_humanoid_skeleton_detected" : null,
+          },
+        };
+      }),
     clearGlb: () => set((s) => ({
-      glbAvatar: { url: null, filename: null, previewVisible: true, scale: 1.0, bones: [], mapping: {}, driveSkeleton: false, hideProcedural: false },
+      glbAvatar: { url: null, filename: null, previewVisible: true, scale: 1.0, bones: [], mapping: {}, proxyRigActive: false, proxyRigReason: null, driveSkeleton: false, hideProcedural: false },
     })),
     toggleDriveSkeleton: () =>
       set((s) => ({ glbAvatar: { ...s.glbAvatar, driveSkeleton: !s.glbAvatar.driveSkeleton } })),
@@ -407,6 +562,8 @@ export const useSimStore = create((set, get) => {
     // --- AI Thinking / Pipeline visualization ---
     toggleAiThinkingPanel: () => { set((s) => ({ aiThinkingPanelOpen: !s.aiThinkingPanelOpen })); persist(get()); },
     togglePipelinePanel:   () => { set((s) => ({ pipelinePanelOpen: !s.pipelinePanelOpen })); persist(get()); },
+    toggleAiraInnerPanel:  () => { set((s) => ({ airaInnerPanelOpen: !s.airaInnerPanelOpen })); persist(get()); },
+    updateAiraInnerState: (airaInnerState) => set({ airaInnerState }),
     pushThought: (kind, text) =>
       set((s) => ({
         aiThoughts: [

@@ -105,7 +105,9 @@ export default function AvatarPanel() {
             <div>
               <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-zinc-400">Loaded</div>
               <div className="text-white text-xs font-bold truncate max-w-[200px]">{avatar.filename || "avatar.glb"}</div>
-              <div className="text-[9px] font-mono text-zinc-500">{avatar.bones.length} bones detected</div>
+              <div className="text-[9px] font-mono text-zinc-500">
+                {avatar.proxyRigActive ? "proxy rig active" : `${avatar.bones.length} bones detected`}
+              </div>
             </div>
             <div className="flex items-center gap-1">
               <button

@@ -5,6 +5,8 @@ import Ground from "@/sim/Ground";
 import AiraRagdoll from "@/sim/AiraRagdoll";
 import AiraRagdollPhysics from "@/sim/AiraRagdollPhysics";
 import AiController from "@/sim/AiController";
+import AiTrainingBridge from "@/sim/AiTrainingBridge";
+import AiraInnerStateMonitor from "@/sim/AiraInnerStateMonitor";
 import CameraRig from "@/sim/CameraRig";
 import SpawnedObject from "@/sim/SpawnedObject";
 import JointDriver from "@/sim/JointDriver";
@@ -70,6 +72,8 @@ export default function SimulationCanvas() {
           <AiController airaRef={airaRef} />
           <MotionPlayer />
           <JointDriver airaRef={airaRef} />
+          <AiTrainingBridge airaRef={airaRef} />
+          <AiraInnerStateMonitor />
           <ContactSensor airaRef={airaRef} />
           <CurriculumDirector airaRef={airaRef} />
           <FallRecorder airaRef={airaRef} />

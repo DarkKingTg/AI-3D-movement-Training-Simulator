@@ -8,6 +8,7 @@ import * as THREE from "three";
 import { useSimStore } from "@/store/simStore";
 import { addImpact } from "@/sim/injuryState";
 import { pulse } from "@/sim/pipelineState";
+import { detectImpactBreak } from "@/sim/breakSystem";
 
 /**
  * AiraRagdollPhysics — True multi-body ragdoll.
@@ -183,6 +184,7 @@ const AiraRagdollPhysics = forwardRef(function AiraPhysics(
   // record to the store. Rapier fires this event each time the contact-force
   // magnitude exceeds the configured threshold.
   const addContact = useSimStore((s) => s.addContact);
+  const recordBreak = useSimStore((s) => s.recordBreak);
   const onImpact = useCallback((partName, payload) => {
     try {
       const force = payload?.totalForceMagnitude ?? 0;
@@ -199,11 +201,13 @@ const AiraRagdollPhysics = forwardRef(function AiraPhysics(
       });
       // Also feed the injury heatmap (module-level, no store churn at 60fps)
       addImpact(partKey, force);
+      const breakEvent = detectImpactBreak(partKey, force);
+      if (breakEvent) recordBreak(breakEvent);
       pulse("contacts");
       pulse("physics");
       pulse("body");
     } catch {}
-  }, [addContact]);
+  }, [addContact, recordBreak]);
 
   useImperativeHandle(
     fwd,

@@ -1,6 +1,6 @@
 import { useSimStore } from "@/store/simStore";
 import { Slider } from "@/components/ui/slider";
-import { Activity, Gauge, Zap, ChevronsUp, Save, RotateCcw } from "lucide-react";
+import { Activity, Gauge, Zap, ChevronsUp, Save, RotateCcw, BrainCircuit, Wifi, WifiOff, ShieldAlert } from "lucide-react";
 import { SIM } from "@/constants/testIds";
 import { toast } from "sonner";
 
@@ -25,9 +25,16 @@ export default function RightSidebar() {
   const setJumpPower = useSimStore((s) => s.setJumpPower);
   const saveNow = useSimStore((s) => s.saveNow);
   const resetAll = useSimStore((s) => s.resetAll);
+  const training = useSimStore((s) => s.trainingBridge);
+  const breakState = useSimStore((s) => s.breakState);
+  const lessons = useSimStore((s) => s.movementLessons);
+  const setTrainingBridgeEnabled = useSimStore((s) => s.setTrainingBridgeEnabled);
+  const setTrainingBridgeMode = useSimStore((s) => s.setTrainingBridgeMode);
+  const setTrainingBridgeSkill = useSimStore((s) => s.setTrainingBridgeSkill);
 
   const distFromOrigin = Math.hypot(aira.pos[0], aira.pos[2]).toFixed(2);
   const velMag = Math.hypot(aira.vel[0], aira.vel[2]).toFixed(2);
+  const latestLesson = lessons[0]?.text || "No movement lesson yet";
 
   return (
     <aside
@@ -66,6 +73,67 @@ export default function RightSidebar() {
           <StatBox label="Attempts" value={stats.attempts} testid={SIM.telAttempts} color="#FFEA00" />
           <StatBox label="Success" value={stats.successes} testid={SIM.telSuccesses} color="#00ff88" />
           <StatBox label="Falls" value={stats.falls} testid={SIM.telFalls} color="#FF0000" />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-white/10 pt-4">
+        <div className="label-xs flex items-center gap-1.5">
+          <BrainCircuit className="w-3 h-3" /> Movement Policy
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <TelemetryRow
+            label="Bridge"
+            value={training.connected ? "WS ONLINE" : training.enabled ? "LOCAL" : "OFF"}
+            color={training.connected ? "#00ff88" : training.enabled ? "#FFEA00" : "#666666"}
+          />
+          <TelemetryRow
+            label="Reward"
+            value={Number(training.lastReward || 0).toFixed(2)}
+            color={(training.lastReward || 0) >= 0 ? "#00ff88" : "#FF6666"}
+          />
+          <TelemetryRow label="Episode" value={`${training.episode}`} color="#A78BFA" />
+          <TelemetryRow label="Skill" value={training.skill.toUpperCase()} color="#00d4ff" />
+        </div>
+        {breakState.lastBreak && (
+          <div className="flex items-start gap-2 bg-[#FF0000]/10 border border-[#FF0000]/30 rounded-md px-2 py-1.5">
+            <ShieldAlert className="w-3.5 h-3.5 text-[#FF6666] mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-[#FF6666]">
+                {breakState.lastBreak.part} · {breakState.lastBreak.reason}
+              </div>
+              <div className="text-[9px] font-mono text-zinc-400 truncate">
+                {latestLesson}
+              </div>
+            </div>
+          </div>
+        )}
+        {!breakState.lastBreak && (
+          <div className="text-[9px] font-mono text-zinc-500 leading-relaxed bg-black/40 border border-white/5 rounded-md p-2">
+            {latestLesson}
+          </div>
+        )}
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            onClick={() => setTrainingBridgeEnabled(!training.enabled)}
+            className={`flex items-center justify-center gap-1.5 text-[9px] uppercase tracking-wider py-2 rounded border font-bold ${
+              training.enabled ? "border-[#00ff88]/50 text-[#00ff88] bg-[#00ff88]/10" : "border-white/15 text-zinc-400"
+            }`}
+          >
+            {training.enabled ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+            {training.enabled ? "On" : "Off"}
+          </button>
+          <button
+            onClick={() => setTrainingBridgeMode(training.mode === "visible" ? "headless" : "visible")}
+            className="text-[9px] uppercase tracking-wider py-2 rounded border border-white/15 text-zinc-300 hover:border-white/30"
+          >
+            {training.mode}
+          </button>
+          <button
+            onClick={() => setTrainingBridgeSkill(nextSkill(training.skill))}
+            className="text-[9px] uppercase tracking-wider py-2 rounded border border-white/15 text-zinc-300 hover:border-white/30"
+          >
+            Next
+          </button>
         </div>
       </div>
 
@@ -133,6 +201,13 @@ export default function RightSidebar() {
       </div>
     </aside>
   );
+}
+
+const SKILL_ORDER = ["stand", "balance", "walk", "recover", "run", "jump", "stairs", "push_pull_lift"];
+
+function nextSkill(skill) {
+  const idx = SKILL_ORDER.indexOf(skill);
+  return SKILL_ORDER[(idx + 1) % SKILL_ORDER.length];
 }
 
 function StatBox({ label, value, testid, color }) {
