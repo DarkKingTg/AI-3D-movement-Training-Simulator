@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { useSimStore } from "@/store/simStore";
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { X, TrendingUp, Target, Activity } from "lucide-react";
 
 export default function AiraAnalyticsPanel() {
@@ -29,6 +29,25 @@ export default function AiraAnalyticsPanel() {
       { name: "Success", value: success },
       { name: "Falls", value: falls },
     ];
+  }, [historicalEpisodes]);
+
+  const skillData = useMemo(() => {
+    const skills = {};
+    historicalEpisodes.forEach((ep) => {
+      if (!ep.skill) return;
+      if (!skills[ep.skill]) skills[ep.skill] = { name: ep.skill, success: 0, falls: 0 };
+      if (ep.success) skills[ep.skill].success++;
+      else skills[ep.skill].falls++;
+    });
+    return Object.values(skills);
+  }, [historicalEpisodes]);
+
+  const durationData = useMemo(() => {
+    return [...historicalEpisodes].slice(0, 50).reverse().map((ep, i) => ({
+      index: i + 1,
+      duration: Number(((ep.duration || 0) / 1000).toFixed(1)),
+      success: ep.success,
+    }));
   }, [historicalEpisodes]);
 
   const COLORS = ["#00ff88", "#ff3366"];
@@ -115,6 +134,55 @@ export default function AiraAnalyticsPanel() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Middle Charts Row */}
+        <div className="grid grid-cols-2 gap-4 h-64">
+          
+          {/* Skill Performance Bar Chart */}
+          <div className="bg-black/40 border border-white/10 rounded-lg p-3 flex flex-col">
+            <div className="text-[10px] uppercase tracking-wider text-zinc-400 mb-2 flex items-center gap-1.5">
+              <Activity className="w-3 h-3 text-[#A78BFA]" />
+              Skill Performance Breakdown
+            </div>
+            <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={skillData} layout="vertical" margin={{ top: 5, right: 10, left: 20, bottom: 5 }}>
+                  <XAxis type="number" stroke="#666" fontSize={10} />
+                  <YAxis dataKey="name" type="category" stroke="#666" fontSize={10} width={60} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "#000", borderColor: "#333", fontSize: "11px" }}
+                    itemStyle={{ color: "#fff" }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: "10px" }} />
+                  <Bar dataKey="success" name="Success" stackId="a" fill="#00ff88" />
+                  <Bar dataKey="falls" name="Falls" stackId="a" fill="#ff3366" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Duration Trend Area Chart */}
+          <div className="bg-black/40 border border-white/10 rounded-lg p-3 flex flex-col">
+            <div className="text-[10px] uppercase tracking-wider text-zinc-400 mb-2 flex items-center gap-1.5">
+              <Activity className="w-3 h-3 text-[#00d4ff]" />
+              Episode Duration Trend (Seconds)
+            </div>
+            <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={durationData}>
+                  <XAxis dataKey="index" stroke="#666" fontSize={10} />
+                  <YAxis stroke="#666" fontSize={10} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "#000", borderColor: "#333", fontSize: "11px" }}
+                    itemStyle={{ color: "#fff" }}
+                  />
+                  <Area type="monotone" dataKey="duration" name="Duration (s)" stroke="#00d4ff" fill="#00d4ff" fillOpacity={0.2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
         </div>
 
         {/* Breakthroughs Section */}
