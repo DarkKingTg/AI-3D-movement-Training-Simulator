@@ -1,6 +1,6 @@
 import { useSimStore } from "@/store/simStore";
 import { Slider } from "@/components/ui/slider";
-import { Activity, Gauge, Zap, ChevronsUp, Save, RotateCcw, BrainCircuit, Wifi, WifiOff, ShieldAlert } from "lucide-react";
+import { Activity, Gauge, Zap, ChevronsUp, Save, RotateCcw, BrainCircuit, Wifi, WifiOff, ShieldAlert, TrendingUp } from "lucide-react";
 import { SIM } from "@/constants/testIds";
 import { toast } from "sonner";
 
@@ -74,6 +74,12 @@ export default function RightSidebar() {
           <StatBox label="Success" value={stats.successes} testid={SIM.telSuccesses} color="#00ff88" />
           <StatBox label="Falls" value={stats.falls} testid={SIM.telFalls} color="#FF0000" />
         </div>
+        <button
+          onClick={() => useSimStore.getState().toggleAnalyticsPanel()}
+          className="mt-2 w-full flex items-center justify-center gap-1.5 bg-black/40 border border-[#A78BFA]/30 hover:bg-[#A78BFA]/10 text-[#A78BFA] text-[10px] uppercase tracking-wider py-2 rounded font-bold transition-colors"
+        >
+          <TrendingUp className="w-3.5 h-3.5" /> View Analytics
+        </button>
       </div>
 
       <div className="flex flex-col gap-2 border-t border-white/10 pt-4">

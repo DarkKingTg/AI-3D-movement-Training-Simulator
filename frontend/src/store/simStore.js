@@ -118,6 +118,11 @@ const initial = {
     episodeEnd: null,
   },
   movementLessons: [],
+  analytics: {
+    historicalEpisodes: [],
+    breakthroughs: [],
+  },
+  analyticsPanelOpen: false,
 
   // --- Movement training bridge ---
   trainingBridge: {
@@ -208,6 +213,11 @@ function persist(state) {
       fallsPanelOpen: state.fallsPanelOpen,
       injuries: { enabled: state.injuries.enabled },
       movementLessons: state.movementLessons.slice(0, 30),
+      analytics: {
+        historicalEpisodes: state.analytics.historicalEpisodes.slice(0, 100),
+        breakthroughs: state.analytics.breakthroughs.slice(0, 50),
+      },
+      analyticsPanelOpen: state.analyticsPanelOpen,
       airaInnerPanelOpen: state.airaInnerPanelOpen,
       trainingBridge: {
         enabled: state.trainingBridge.enabled,
@@ -238,6 +248,7 @@ export const useSimStore = create((set, get) => {
     objectPoses: {},
     glbAvatar: { ...initial.glbAvatar, ...(saved?.glbAvatar || {}) },
     movementLessons: saved?.movementLessons || initial.movementLessons,
+    analytics: saved?.analytics || initial.analytics,
     airaInnerState: initial.airaInnerState,
 
     setGoal: (goal) => {
@@ -563,6 +574,25 @@ export const useSimStore = create((set, get) => {
     toggleAiThinkingPanel: () => { set((s) => ({ aiThinkingPanelOpen: !s.aiThinkingPanelOpen })); persist(get()); },
     togglePipelinePanel:   () => { set((s) => ({ pipelinePanelOpen: !s.pipelinePanelOpen })); persist(get()); },
     toggleAiraInnerPanel:  () => { set((s) => ({ airaInnerPanelOpen: !s.airaInnerPanelOpen })); persist(get()); },
+    toggleAnalyticsPanel:  () => { set((s) => ({ analyticsPanelOpen: !s.analyticsPanelOpen })); persist(get()); },
+    recordEpisodeAnalytics: (episode) => {
+      set((s) => ({
+        analytics: {
+          ...s.analytics,
+          historicalEpisodes: [episode, ...s.analytics.historicalEpisodes].slice(0, 500)
+        }
+      }));
+      persist(get());
+    },
+    recordBreakthrough: (text) => {
+      set((s) => ({
+        analytics: {
+          ...s.analytics,
+          breakthroughs: [{ id: Date.now(), t: Date.now(), text }, ...s.analytics.breakthroughs].slice(0, 100)
+        }
+      }));
+      persist(get());
+    },
     updateAiraInnerState: (airaInnerState) => set({ airaInnerState }),
     pushThought: (kind, text) =>
       set((s) => ({

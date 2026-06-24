@@ -11,6 +11,7 @@ import AvatarPanel from "@/components/sim/AvatarPanel";
 import AIThinkingPanel from "@/components/sim/AIThinkingPanel";
 import PipelinePanel from "@/components/sim/PipelinePanel";
 import AiraInnerStatePanel from "@/components/sim/AiraInnerStatePanel";
+import AiraAnalyticsPanel from "@/components/sim/AiraAnalyticsPanel";
 import { Toaster } from "@/components/ui/sonner";
 import { useSimStore } from "@/store/simStore";
 
@@ -73,6 +74,7 @@ export default function Simulation() {
       <AIThinkingPanel />
       <PipelinePanel />
       <AiraInnerStatePanel />
+      <AiraAnalyticsPanel />
     </div>
   );
 }

@@ -166,6 +166,30 @@ export default function AiTrainingBridge({ airaRef }) {
     if (episodeEnd && !episodeHandledRef.current) {
       episodeHandledRef.current = true;
       bridgePatch.lastEpisodeEnd = { ...episodeEnd, t: Date.now() };
+
+      // --- Analytics Hook ---
+      const storeState = useSimStore.getState();
+      const isSuccess = episodeEnd.success;
+      const rewardTotal = reward.total;
+      const skill = observation.goal;
+      const durationMs = Date.now() - episodeStartedAtRef.current;
+      
+      storeState.recordEpisodeAnalytics({
+        success: isSuccess,
+        reward: rewardTotal,
+        duration: durationMs,
+        skill,
+        t: Date.now()
+      });
+
+      const history = storeState.analytics.historicalEpisodes;
+      if (isSuccess && (!history.length || !history.find(e => e.success && e.skill === skill))) {
+         storeState.recordBreakthrough(`First successful episode for skill: ${skill.toUpperCase()}!`);
+      } else if (isSuccess && rewardTotal > 50 && (!history.find(e => e.reward > 50 && e.skill === skill))) {
+         storeState.recordBreakthrough(`High reward breakthrough on ${skill.toUpperCase()} (${rewardTotal.toFixed(1)} pts)!`);
+      }
+      // ----------------------
+
       if (episodeEnd.reason === "fall" && !observation.injuryState?.broken) {
         recordMovementLesson({
           kind: "movement_failure",
